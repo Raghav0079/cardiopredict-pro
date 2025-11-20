@@ -171,7 +171,7 @@ cardio-vascular/
 ├── 🌐 WEB INTERFACE 
 │   ├── gradio_interface.py      # Interactive Gradio web app
 │   ├── requirements.txt         # Python dependencies
-│   └── launch.py                # Setup and launch script
+│   
 │
 ├── 📖 DOCUMENTATION
 │   └── README.md                # This comprehensive guide
