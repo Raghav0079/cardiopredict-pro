@@ -9,6 +9,20 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.svm import SVC
 from sklearn.model_selection import train_test_split
 import warnings
+from datetime import datetime
+import os
+import tempfile
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter, A4
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
+from reportlab.lib import colors
+from reportlab.lib.enums import TA_CENTER, TA_LEFT
+from reportlab.graphics.shapes import Drawing, Rect
+from reportlab.graphics.charts.barcharts import VerticalBarChart
+from reportlab.graphics.charts.legends import Legend
+from io import BytesIO
 warnings.filterwarnings('ignore')
 
 # Load and prepare the dataset
@@ -70,7 +84,378 @@ print("🫀 Loading cardiovascular disease prediction models...")
 models, feature_names = load_and_prepare_models()
 print("✅ Models loaded successfully!")
 
-def predict_heart_disease(age, sex, chest_pain_type, resting_bp, cholesterol, 
+def generate_pdf_report(report_data, input_data):
+    """Generate a professional medical-grade PDF report for cardiovascular assessment"""
+    
+    # Create a temporary file for the PDF
+    with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp_file:
+        pdf_path = tmp_file.name
+    
+    # Create the PDF document with professional margins
+    doc = SimpleDocTemplate(pdf_path, pagesize=letter, rightMargin=50, leftMargin=50, 
+                           topMargin=50, bottomMargin=50)
+    
+    # Define professional medical styles - optimized for smaller PDF
+    styles = getSampleStyleSheet()
+    
+    # Medical Header Style - reduced size
+    medical_title = ParagraphStyle(
+        'MedicalTitle',
+        parent=styles['Heading1'],
+        fontSize=18,
+        spaceAfter=12,
+        spaceBefore=8,
+        textColor=colors.HexColor('#1565C0'),
+        alignment=TA_CENTER,
+        fontName='Helvetica-Bold',
+        borderWidth=1,
+        borderColor=colors.HexColor('#1565C0'),
+        borderPadding=6
+    )
+    
+    # Institution/Facility Style - reduced
+    facility_style = ParagraphStyle(
+        'FacilityStyle',
+        parent=styles['Normal'],
+        fontSize=10,
+        spaceAfter=10,
+        textColor=colors.HexColor('#424242'),
+        alignment=TA_CENTER,
+        fontName='Helvetica-Bold'
+    )
+    
+    # Section Header Style - compact
+    section_header = ParagraphStyle(
+        'SectionHeader',
+        parent=styles['Heading2'],
+        fontSize=12,
+        spaceAfter=6,
+        spaceBefore=8,
+        textColor=colors.HexColor('#0D47A1'),
+        fontName='Helvetica-Bold',
+        borderWidth=0.5,
+        borderColor=colors.HexColor('#0D47A1'),
+        leftIndent=0,
+        borderPadding=3
+    )
+    
+    # Subsection Style - compact
+    subsection_style = ParagraphStyle(
+        'SubsectionStyle',
+        parent=styles['Heading3'],
+        fontSize=10,
+        spaceAfter=4,
+        spaceBefore=6,
+        textColor=colors.HexColor('#1976D2'),
+        fontName='Helvetica-Bold'
+    )
+    
+    # Clinical Text Style - compact
+    clinical_style = ParagraphStyle(
+        'ClinicalStyle',
+        parent=styles['Normal'],
+        fontSize=9,
+        spaceAfter=4,
+        fontName='Helvetica',
+        leftIndent=8
+    )
+    
+    # Important Notice Style - compact
+    notice_style = ParagraphStyle(
+        'NoticeStyle',
+        parent=styles['Normal'],
+        fontSize=8,
+        spaceAfter=6,
+        textColor=colors.HexColor('#D32F2F'),
+        fontName='Helvetica-Bold',
+        borderWidth=1,
+        borderColor=colors.HexColor('#D32F2F'),
+        borderPadding=4,
+        backColor=colors.HexColor('#FFEBEE')
+    )
+    
+    # Build the professional medical report - optimized
+    story = []
+    
+    # Medical Report Header with Professional Branding - compact
+    story.append(Paragraph("CARDIOVASCULAR RISK ASSESSMENT", medical_title))
+    story.append(Paragraph("CardioPredict Pro™ Medical AI System", facility_style))
+    story.append(Spacer(1, 8))
+    
+    # Compact Medical Watermark
+    story.append(Paragraph(
+        "<i>CONFIDENTIAL MEDICAL REPORT</i>", 
+        ParagraphStyle('Watermark', parent=styles['Normal'], fontSize=8, textColor=colors.grey, alignment=TA_CENTER, fontName='Helvetica-Oblique')
+    ))
+    story.append(Spacer(1, 10))
+    
+    # Report Information Header - compact
+    report_info = [
+        ['REPORT INFORMATION', ''],
+        ['Report ID:', f"CVD-{datetime.now().strftime('%Y%m%d-%H%M%S')}"],
+        ['Generated:', datetime.now().strftime('%B %d, %Y at %H:%M')],
+        ['AI Version:', 'CardioPredict Pro v1.0']
+    ]
+    
+    report_table = Table(report_info, colWidths=[2.2*inch, 4.3*inch])
+    report_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (1, 0), colors.HexColor('#0D47A1')),
+        ('TEXTCOLOR', (0, 0), (1, 0), colors.white),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 10),
+        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 1), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 4),
+        ('TOPPADDING', (0, 0), (-1, 0), 4),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#F5F5F5')])
+    ]))
+    
+    story.append(report_table)
+    story.append(Spacer(1, 10))
+    
+    # Patient Demographics Section
+    story.append(Paragraph("I. PATIENT DEMOGRAPHICS", section_header))
+    
+    patient_info = [
+        ['PATIENT IDENTIFICATION', ''],
+        ['Patient Name:', report_data['patient_name']],
+        ['Age at Assessment:', f"{report_data['age']} years"],
+        ['Biological Sex:', report_data['sex']],
+        ['Assessment Date:', report_data['timestamp']],
+        ['Medical Record #:', f"AI-{hash(report_data['patient_name'] + report_data['timestamp']) % 100000:05d}"]
+    ]
+    
+    patient_table = Table(patient_info, colWidths=[2.5*inch, 3.5*inch])
+    patient_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (1, 0), colors.HexColor('#1976D2')),
+        ('TEXTCOLOR', (0, 0), (1, 0), colors.white),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 12),
+        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 1), (-1, -1), 10),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#E3F2FD')])
+    ]))
+    
+    story.append(patient_table)
+    story.append(Spacer(1, 15))
+    
+    # Clinical Assessment Parameters Section
+    story.append(Paragraph("II. CLINICAL ASSESSMENT PARAMETERS", section_header))
+    story.append(Spacer(1, 8))
+    
+    # Vital Signs Subsection
+    story.append(Paragraph("A. Vital Signs and Physical Examination", subsection_style))
+    
+    vital_signs_data = [
+        ['PARAMETER', 'MEASURED VALUE', 'NORMAL RANGE', 'CLINICAL SIGNIFICANCE'],
+        ['Resting Blood Pressure', f"{input_data['trestbps'].iloc[0]} mmHg", '<120/80 mmHg', 'Systolic pressure measurement'],
+        ['Maximum Heart Rate', f"{input_data['thalach'].iloc[0]} bpm", f"≥{220-input_data['age'].iloc[0]} bpm (age-adjusted)", 'Exercise stress test result'],
+        ['Age', f"{input_data['age'].iloc[0]} years", 'Adult population', 'Primary risk factor'],
+        ['Biological Sex', 'Male' if input_data['sex'].iloc[0] == 1 else 'Female', 'N/A', 'Gender-based risk stratification']
+    ]
+    
+    vital_table = Table(vital_signs_data, colWidths=[1.6*inch, 1.4*inch, 1.4*inch, 2.1*inch])
+    vital_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (3, 0), colors.HexColor('#4CAF50')),
+        ('TEXTCOLOR', (0, 0), (3, 0), colors.white),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 9),
+        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 1), (-1, -1), 8),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#F1F8E9')])
+    ]))
+    
+    story.append(vital_table)
+    story.append(Spacer(1, 12))
+    
+    # Laboratory Results Subsection
+    story.append(Paragraph("B. Laboratory Investigations", subsection_style))
+    story.append(Spacer(1, 5))
+    
+    lab_data = [
+        ['TEST', 'RESULT', 'REFERENCE RANGE', 'INTERPRETATION'],
+        ['Serum Cholesterol', f"{input_data['chol'].iloc[0]} mg/dL", '<200 mg/dL (Optimal)', 'Lipid profile assessment'],
+        ['Fasting Blood Glucose', '>120 mg/dL' if input_data['fbs'].iloc[0] == 1 else '≤120 mg/dL', '<100 mg/dL (Normal)', 'Diabetes screening marker'],
+    ]
+    
+    lab_table = Table(lab_data, colWidths=[1.8*inch, 1.6*inch, 1.4*inch, 1.7*inch])
+    lab_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (3, 0), colors.HexColor('#FF9800')),
+        ('TEXTCOLOR', (0, 0), (3, 0), colors.white),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 9),
+        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 1), (-1, -1), 8),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#FFF3E0')])
+    ]))
+    
+    story.append(lab_table)
+    story.append(Spacer(1, 12))
+    
+    # Cardiac Diagnostics Subsection
+    story.append(Paragraph("C. Cardiac Diagnostic Studies", subsection_style))
+    story.append(Spacer(1, 5))
+    
+    cardiac_data = [
+        ['DIAGNOSTIC STUDY', 'FINDING', 'CLINICAL INTERPRETATION'],
+        ['Chest Pain Classification', ['Typical Angina', 'Atypical Angina', 'Non-anginal Pain', 'Asymptomatic'][input_data['cp'].iloc[0]], 'Symptom-based cardiac risk assessment'],
+        ['Resting ECG', ['Normal', 'ST-T Wave Abnormality', 'Left Ventricular Hypertrophy'][input_data['restecg'].iloc[0]], 'Baseline cardiac rhythm analysis'],
+        ['Exercise-Induced Angina', 'Present' if input_data['exang'].iloc[0] == 1 else 'Absent', 'Exercise tolerance evaluation'],
+        ['ST Depression (Exercise)', f"{input_data['oldpeak'].iloc[0]} mm", 'Stress-induced ischemic changes'],
+        ['ST Segment Slope', ['Upsloping', 'Flat', 'Downsloping'][input_data['slope'].iloc[0]], 'Exercise ECG pattern analysis'],
+        ['Fluoroscopy Vessels', f"{input_data['ca'].iloc[0]} major vessels", 'Coronary angiography findings'],
+        ['Thalassemia Scan', ['Normal', 'Fixed Defect', 'Reversible Defect', 'Not Described'][input_data['thal'].iloc[0]], 'Myocardial perfusion imaging']
+    ]
+    
+    cardiac_table = Table(cardiac_data, colWidths=[2.0*inch, 2.2*inch, 2.3*inch])
+    cardiac_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (2, 0), colors.HexColor('#9C27B0')),
+        ('TEXTCOLOR', (0, 0), (2, 0), colors.white),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 9),
+        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 1), (-1, -1), 8),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#F3E5F5')])
+    ]))
+    
+    story.append(cardiac_table)
+    story.append(Spacer(1, 20))
+    
+    # AI Analysis Results Section - simplified
+    story.append(Paragraph("III. AI ANALYSIS", section_header))
+    story.append(Spacer(1, 4))
+    
+    model_data = [['MODEL', 'PREDICTION', 'PROBABILITY']]
+    
+    for model_name, result in report_data['results'].items():
+        risk_prob = float(report_data['probabilities'][model_name]['Heart Disease'])
+        prediction = "POSITIVE" if "Detected" in result else "NEGATIVE"
+        model_data.append([model_name, prediction, f"{risk_prob:.1%}"])
+    
+    model_table = Table(model_data, colWidths=[2.2*inch, 2.2*inch, 2.1*inch])
+    model_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (2, 0), colors.HexColor('#1565C0')),
+        ('TEXTCOLOR', (0, 0), (2, 0), colors.white),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 8),
+        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 1), (-1, -1), 7),
+        ('GRID', (0, 0), (-1, -1), 0.3, colors.black),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+    ]))
+    
+    # Color code the predictions
+    for i, (model_name, result) in enumerate(report_data['results'].items()):
+        row_idx = i + 1
+        if "Detected" in result:
+            model_table.setStyle(TableStyle([
+                ('BACKGROUND', (1, row_idx), (1, row_idx), colors.HexColor('#FFCDD2')),
+                ('TEXTCOLOR', (1, row_idx), (1, row_idx), colors.HexColor('#C62828'))
+            ]))
+        else:
+            model_table.setStyle(TableStyle([
+                ('BACKGROUND', (1, row_idx), (1, row_idx), colors.HexColor('#C8E6C9')),
+                ('TEXTCOLOR', (1, row_idx), (1, row_idx), colors.HexColor('#2E7D32'))
+            ]))
+    
+    story.append(model_table)
+    story.append(Spacer(1, 8))
+    
+    # Clinical Consensus - compact
+    consensus = f"{report_data['positive_predictions']}/{len(report_data['results'])}"
+    risk_level = "HIGH" if report_data['positive_predictions'] >= 3 else "MODERATE" if report_data['positive_predictions'] >= 2 else "LOW"
+    
+    consensus_data = [
+        ['CONSENSUS RESULT', 'VALUE'],
+        ['Risk Level', f"{risk_level} RISK"],
+        ['Model Agreement', f"{consensus} models positive"],
+        ['Confidence', report_data['confidence_level']]
+    ]
+    
+    consensus_table = Table(consensus_data, colWidths=[3.25*inch, 3.25*inch])
+    consensus_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (1, 0), colors.HexColor('#424242')),
+        ('TEXTCOLOR', (0, 0), (1, 0), colors.white),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 8),
+        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 1), (-1, -1), 7),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE')
+    ]))
+    
+    story.append(consensus_table)
+    story.append(Spacer(1, 10))
+    
+    # Clinical Recommendations - compact
+    story.append(Paragraph("IV. RECOMMENDATIONS", section_header))
+    story.append(Spacer(1, 4))
+    
+    # Simplified recommendations based on risk level
+    if report_data['positive_predictions'] >= 3:
+        rec_text = "HIGH RISK: Immediate cardiology consultation recommended. Consider comprehensive cardiac evaluation and risk factor optimization."
+    elif report_data['positive_predictions'] >= 2:
+        rec_text = "MODERATE RISK: Schedule cardiology consultation within 2-4 weeks. Implement lifestyle modifications and monitor risk factors."
+    else:
+        rec_text = "LOW RISK: Continue routine preventive care. Maintain healthy lifestyle and regular cardiovascular screening."
+    
+    story.append(Paragraph(rec_text, clinical_style))
+    story.append(Spacer(1, 10))
+    
+    # Simplified Medical Disclaimer
+    story.append(Paragraph("V. DISCLAIMER", section_header))
+    story.append(Spacer(1, 4))
+    
+    disclaimer_text = """
+    This AI assessment is for educational purposes only and does not replace professional 
+    medical diagnosis. Results should be interpreted by qualified healthcare professionals. 
+    Always consult your physician for medical advice and treatment decisions.
+    """
+    
+    story.append(Paragraph(disclaimer_text, notice_style))
+    story.append(Spacer(1, 10))
+    
+    # Simple Footer
+    footer_data = [
+        ['Report ID:', f"CVD-{datetime.now().strftime('%Y%m%d-%H%M%S')}"],
+        ['Generated:', datetime.now().strftime('%Y-%m-%d %H:%M:%S')],
+        ['System:', 'CardioPredict Pro v1.0']
+    ]
+    
+    footer_table = Table(footer_data, colWidths=[2.2*inch, 4.3*inch])
+    footer_table.setStyle(TableStyle([
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 0), (-1, -1), 7),
+        ('GRID', (0, 0), (-1, -1), 0.3, colors.grey),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE')
+    ]))
+    
+    story.append(footer_table)
+    
+    # Build the PDF
+    doc.build(story)
+    
+    return pdf_path
+
+def predict_heart_disease(patient_name, age, sex, chest_pain_type, resting_bp, cholesterol, 
                          fasting_blood_sugar, rest_ecg, max_heart_rate, 
                          exercise_angina, st_depression, slope, 
                          colored_vessels, thalassemia):
@@ -121,9 +506,27 @@ def predict_heart_disease(age, sex, chest_pain_type, resting_bp, cholesterol,
         overall_result = "✅ LOW RISK: Models suggest lower probability of heart disease"
         recommendation = "Maintain a healthy lifestyle and regular check-ups."
     
+    # Store patient info for PDF generation
+    report_data = {
+        'patient_name': patient_name if patient_name.strip() else "Not Provided",
+        'age': age,
+        'sex': "Male" if sex == 1 else "Female",
+        'results': results,
+        'probabilities': probabilities,
+        'overall_result': None,  # Will be updated below
+        'recommendation': None,  # Will be updated below
+        'positive_predictions': positive_predictions,
+        'confidence_level': confidence_level,
+        'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    }
+    
     # Create detailed results string with professional formatting
-    detailed_results = """
+    detailed_results = f"""
 ## 🏥 **Cardiovascular Risk Assessment Report**
+
+**Patient:** {report_data['patient_name']}  
+**Date:** {report_data['timestamp']}  
+**Age:** {age} years | **Sex:** {report_data['sex']}
 
 ### 📊 **Individual Model Analysis**
 
@@ -174,6 +577,10 @@ def predict_heart_disease(age, sex, chest_pain_type, resting_bp, cholesterol,
 - Continue regular check-ups
 - Monitor risk factors periodically
 - Stay physically active"""
+    
+    # Update report data with final assessment
+    report_data['overall_result'] = overall_result
+    report_data['recommendation'] = recommendation
     
     detailed_results += f"""
 ---
@@ -263,7 +670,10 @@ def predict_heart_disease(age, sex, chest_pain_type, resting_bp, cholesterol,
     
     plt.tight_layout()
     
-    return detailed_results, fig
+    # Generate PDF report
+    pdf_path = generate_pdf_report(report_data, input_data)
+    
+    return detailed_results, fig, pdf_path
 
 # Define the Gradio interface
 def create_interface():
@@ -353,9 +763,19 @@ def create_interface():
         # Input Form Section
         gr.HTML('<div class="section-header"><h3 style="margin: 0; color: #495057;">📋 Patient Assessment Form</h3></div>')
         
+        # Patient Name Section
+        gr.HTML('<h4 style="color: #6c757d; border-bottom: 2px solid #e9ecef; padding-bottom: 0.5rem;">👤 Patient Information</h4>')
+        
+        patient_name = gr.Textbox(
+            label="Patient Name",
+            placeholder="Enter patient's full name",
+            info="This will appear on the generated PDF report",
+            value=""
+        )
+        
         with gr.Row():
             with gr.Column(scale=1):
-                gr.HTML('<h4 style="color: #6c757d; border-bottom: 2px solid #e9ecef; padding-bottom: 0.5rem;">👤 Demographics</h4>')
+                gr.HTML('<h4 style="color: #6c757d; border-bottom: 2px solid #e9ecef; padding-bottom: 0.5rem; margin-top: 1.5rem;">📊 Demographics</h4>')
                 
                 age = gr.Slider(
                     minimum=1, maximum=100, value=50, 
@@ -505,14 +925,30 @@ def create_interface():
                 results_plot = gr.Plot(visible=True)
                 gr.HTML('</div>')
         
+        # PDF Report Section
+        gr.HTML('<div class="section-header"><h3 style="margin: 0; color: #495057;">📄 Downloadable Report</h3></div>')
+        
+        gr.HTML("""<div class="info-box">
+            <p style="margin: 0; color: #0c5460;">
+                <strong>📋 Professional Report:</strong> Download a comprehensive PDF report containing all assessment 
+                results, clinical parameters, and recommendations for medical records or consultation purposes.
+            </p>
+        </div>""")
+        
+        pdf_output = gr.File(
+            label="📄 Download PDF Report",
+            file_types=[".pdf"],
+            visible=True
+        )
+        
         # Connect the prediction function
         predict_btn.click(
             predict_heart_disease,
-            inputs=[age, sex, chest_pain_type, resting_bp, cholesterol, 
+            inputs=[patient_name, age, sex, chest_pain_type, resting_bp, cholesterol, 
                    fasting_blood_sugar, rest_ecg, max_heart_rate, 
                    exercise_angina, st_depression, slope, 
                    colored_vessels, thalassemia],
-            outputs=[results_text, results_plot]
+            outputs=[results_text, results_plot, pdf_output]
         )
         
         # Professional Information Section
@@ -562,10 +998,10 @@ if __name__ == "__main__":
     print("✅ System ready for cardiovascular risk assessment")
     print("🌐 Launching professional medical interface...")
     demo.launch(
-        share=True,  # Enable public shareable link
+        share=False,  # Disable public share for local testing
         inbrowser=True,  # Open in browser automatically
         server_name="localhost",  # Local access only for security
-        server_port=7861,  # Use different port to avoid conflicts
+        server_port=7862,  # Use different port to avoid conflicts
         show_error=True,  # Show detailed errors
         quiet=False,  # Show startup logs
         favicon_path=None,  # Could add medical favicon
