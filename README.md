@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+
 # 🫀 Cardiovascular Disease Prediction System
 
 A comprehensive machine learning project for cardiovascular disease prediction featuring:
@@ -340,17 +340,5 @@ The Gradio interface can be customized by editing the `create_interface()` funct
 - **🤗 Hugging Face**: [Spaces Documentation](https://huggingface.co/docs/hub/spaces)
 - **📄 PDF Reports**: ReportLab documentation for custom report modifications
 
-=======
->>>>>>> 18bf31f375eb92e261d1225029b01fd58a314252
----
-title: CardioPredict Pro
-emoji: 🫀
-colorFrom: blue
-colorTo: purple
-sdk: gradio
-sdk_version: 5.49.1
-app_file: app.py
-pinned: false
-license: mit
----
+
 
