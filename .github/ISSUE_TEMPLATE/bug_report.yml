@@ -1,0 +1,221 @@
+# GitHub Issue Templates
+
+name: Bug Report
+description: Report a bug in CardioPredict Pro
+title: "[BUG] "
+labels: ["bug", "needs-triage"]
+assignees: ["Raghav0079"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting a bug in CardioPredict Pro! 
+        
+        **⚠️ Medical Safety Notice**: If this bug could affect patient safety or medical decisions, please mark it as high priority.
+        
+        **🔒 Security Notice**: If this is a security vulnerability, please report it privately to security@raghav0079.dev
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Pre-submission Checklist
+      description: Please confirm the following before submitting
+      options:
+        - label: I have searched for existing issues to avoid duplicates
+          required: true
+        - label: This is a bug report (not a feature request or question)
+          required: true
+        - label: I am NOT reporting a security vulnerability publicly
+          required: true
+        - label: I understand this tool is for educational use only
+          required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority Level
+      description: How critical is this bug?
+      options:
+        - Low - Minor inconvenience
+        - Medium - Affects functionality but has workarounds
+        - High - Significantly impacts usage
+        - Critical - Affects medical safety or causes data loss
+    validations:
+      required: true
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Bug Category
+      description: Which area does this bug affect?
+      options:
+        - Machine Learning Models - Prediction accuracy or model issues
+        - User Interface - Visual or interaction problems
+        - PDF Reports - Report generation or formatting issues
+        - Database Integration - Data storage or retrieval problems
+        - Analytics/WandB - Tracking or monitoring issues
+        - Deployment - Installation or deployment problems
+        - Performance - Speed or resource usage issues
+        - Security - Non-critical security concerns
+        - Documentation - Incorrect or missing documentation
+        - Other - Please specify in description
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: Clearly describe the bug and its impact
+      placeholder: |
+        A clear and concise description of what the bug is.
+        
+        Medical Context (if applicable):
+        - What clinical scenario were you testing?
+        - What was the expected medical behavior?
+        - How does this bug affect risk assessment?
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: Detailed steps to reproduce the bug
+      placeholder: |
+        1. Go to '...'
+        2. Click on '...'
+        3. Enter values '...'
+        4. See error
+        
+        Patient Parameters Used (if applicable):
+        - Age: XX
+        - Sex: Male/Female
+        - Blood Pressure: XXX mmHg
+        - Cholesterol: XXX mg/dL
+        - Other parameters: ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What should happen instead?
+      placeholder: |
+        A clear description of what you expected to happen.
+        
+        Medical Expectations (if applicable):
+        - Expected risk assessment result
+        - Expected clinical recommendations
+        - Expected PDF report content
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: What actually happened?
+      placeholder: |
+        A clear description of what actually happened.
+        
+        Include error messages, unexpected results, or incorrect medical assessments.
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment Information
+      description: Technical details about your environment
+      placeholder: |
+        - OS: [e.g. Windows 11, macOS 13, Ubuntu 22.04]
+        - Python Version: [e.g. 3.9.7]
+        - Browser: [e.g. Chrome 120, Firefox 121, Safari 17]
+        - Deployment: [Local, Hugging Face Spaces, Custom Cloud]
+        - App Version: [e.g. 1.0.0]
+        - Additional packages: [Any custom packages installed]
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error Messages/Logs
+      description: Include any error messages or log outputs
+      placeholder: |
+        ```
+        Paste any error messages, stack traces, or log outputs here.
+        
+        Please remove any sensitive information like API keys or real patient data.
+        ```
+      render: shell
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots/Attachments
+      description: Add screenshots or files that help illustrate the issue
+      placeholder: |
+        Drag and drop screenshots here, or describe visual issues.
+        
+        ⚠️ IMPORTANT: Do not include screenshots with real patient information!
+        Use synthetic/test data only.
+
+  - type: textarea
+    id: workaround
+    attributes:
+      label: Workaround
+      description: Is there a temporary workaround for this issue?
+      placeholder: |
+        If you found a way to work around this issue, please describe it here.
+        This helps other users experiencing the same problem.
+
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact Assessment
+      description: How does this bug affect your usage?
+      placeholder: |
+        - How frequently does this occur?
+        - Does it block your testing/research?
+        - Are there alternative workflows?
+        - Medical implications (if any)
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Any other relevant information
+      placeholder: |
+        Add any other context about the problem here.
+        
+        Examples:
+        - Similar issues in other medical AI tools
+        - Specific medical use cases affected
+        - Research or educational impact
+        - Suggestions for improvement
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribution Interest
+      description: Would you like to help fix this issue?
+      options:
+        - label: I would be interested in working on a fix for this issue
+        - label: I can provide additional testing once a fix is available
+        - label: I can help with medical validation of the fix
+        - label: I can help with documentation updates
+
+  - type: markdown
+    attributes:
+      value: |
+        ---
+        
+        **Thank you for helping improve CardioPredict Pro!** 
+        
+        Your bug report helps us make this medical AI tool better for educational and research purposes.
+        
+        **Remember**: This tool is for educational use only. Never use it for actual medical diagnosis or treatment decisions.

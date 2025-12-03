@@ -1,0 +1,328 @@
+name: Feature Request
+description: Suggest a new feature for CardioPredict Pro
+title: "[FEATURE] "
+labels: ["enhancement", "needs-review"]
+assignees: ["Raghav0079"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for suggesting a feature for CardioPredict Pro! 
+        
+        **🏥 Medical Focus**: Please ensure all suggestions align with educational and research purposes only.
+        
+        **🔬 Evidence-Based**: Medical features should be based on established clinical guidelines.
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Pre-submission Checklist
+      description: Please confirm the following before submitting
+      options:
+        - label: I have searched for existing feature requests to avoid duplicates
+          required: true
+        - label: This feature aligns with educational/research use only
+          required: true
+        - label: I understand this tool should not be used for actual medical diagnosis
+          required: true
+        - label: This feature is technically feasible for an open-source project
+          required: true
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Feature Category
+      description: Which area would this feature enhance?
+      options:
+        - Machine Learning - New models or ML improvements
+        - User Interface - UI/UX enhancements
+        - Medical Features - Clinical functionality improvements
+        - Reports & Analytics - Reporting and visualization features
+        - Database & Storage - Data management improvements
+        - Security & Privacy - Security enhancements
+        - Performance - Speed and optimization improvements
+        - Integration - Third-party service integrations
+        - Documentation - Documentation improvements
+        - Deployment - Installation and deployment features
+        - Accessibility - Accessibility improvements
+        - Other - Please specify in description
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority Level
+      description: How important is this feature?
+      options:
+        - Low - Nice to have enhancement
+        - Medium - Would improve user experience significantly
+        - High - Important for educational/research value
+        - Critical - Essential for medical education compliance
+    validations:
+      required: true
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Feature Summary
+      description: Brief description of the proposed feature
+      placeholder: |
+        One sentence summary of what you want to add or improve.
+        
+        Example: "Add support for pediatric cardiovascular risk assessment models"
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: What problem would this feature solve?
+      placeholder: |
+        Describe the current limitation or gap that this feature would address.
+        
+        Medical Context (if applicable):
+        - What clinical/educational scenario is not currently supported?
+        - What medical guidelines or standards would this align with?
+        - How would this improve medical education or research?
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: Detailed description of the proposed feature
+      placeholder: |
+        Describe your proposed solution in detail.
+        
+        Include:
+        - How it would work from a user perspective
+        - Key functionality and user interface changes
+        - Medical/clinical considerations
+        - Integration with existing features
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternative Solutions
+      description: Have you considered alternative approaches?
+      placeholder: |
+        Describe any alternative solutions or features you've considered.
+        
+        Examples:
+        - Different UI approaches
+        - Alternative ML models or algorithms
+        - Different medical parameter sets
+        - Other tools or libraries that could be used
+    validations:
+      required: true
+
+  - type: textarea
+    id: benefits
+    attributes:
+      label: Benefits & Impact
+      description: How would this feature benefit users?
+      placeholder: |
+        Describe the benefits this feature would provide:
+        
+        Educational Benefits:
+        - How it improves learning about cardiovascular medicine
+        - What new educational scenarios it enables
+        - How it supports medical training
+        
+        Research Benefits:
+        - What research questions it helps answer
+        - How it supports clinical research workflows
+        - What new analytical capabilities it provides
+        
+        User Experience Benefits:
+        - How it improves usability
+        - What workflows it streamlines
+        - How it reduces confusion or errors
+
+  - type: textarea
+    id: medical_validation
+    attributes:
+      label: Medical Validation
+      description: Medical and clinical considerations
+      placeholder: |
+        Medical/Clinical Considerations:
+        
+        Evidence Base:
+        - What medical literature supports this feature?
+        - Are there established clinical guidelines?
+        - What medical organizations recommend this approach?
+        
+        Safety Considerations:
+        - How does this maintain educational-only use?
+        - What disclaimers or warnings are needed?
+        - How does this avoid encouraging clinical use?
+        
+        Accuracy & Reliability:
+        - What validation would be needed?
+        - How would accuracy be measured?
+        - What are the limitations?
+
+  - type: textarea
+    id: technical_requirements
+    attributes:
+      label: Technical Requirements
+      description: Technical implementation considerations
+      placeholder: |
+        Technical Implementation:
+        
+        Dependencies:
+        - New Python packages required
+        - Changes to existing dependencies
+        - Additional system requirements
+        
+        Architecture Changes:
+        - Database schema modifications
+        - API changes or additions
+        - Frontend component updates
+        
+        Performance Impact:
+        - Expected impact on prediction speed
+        - Memory or storage requirements
+        - Scalability considerations
+        
+        Compatibility:
+        - Backward compatibility requirements
+        - Browser/platform support
+        - Deployment environment considerations
+
+  - type: textarea
+    id: user_stories
+    attributes:
+      label: User Stories
+      description: Specific use cases for this feature
+      placeholder: |
+        Describe specific scenarios where this feature would be used:
+        
+        As a medical student, I want to...
+        - [Specific use case and expected outcome]
+        
+        As a researcher, I want to...
+        - [Specific use case and expected outcome]
+        
+        As an educator, I want to...
+        - [Specific use case and expected outcome]
+        
+        As a developer, I want to...
+        - [Specific use case and expected outcome]
+
+  - type: textarea
+    id: mockups
+    attributes:
+      label: Mockups/Examples
+      description: Visual examples or mockups of the feature
+      placeholder: |
+        If you have mockups, wireframes, or examples, please attach them here.
+        
+        You can also describe the visual/interaction design:
+        - What new UI elements would be needed?
+        - How would the user workflow change?
+        - What would the output look like?
+        
+        Examples from other medical tools or research papers are also helpful.
+
+  - type: textarea
+    id: implementation_plan
+    attributes:
+      label: Implementation Plan
+      description: How do you think this should be implemented?
+      placeholder: |
+        If you have ideas about implementation approach:
+        
+        Phase 1 (Basic):
+        - Minimum viable feature set
+        - Core functionality
+        - Basic UI changes
+        
+        Phase 2 (Enhanced):
+        - Advanced features
+        - Improved UI/UX
+        - Additional validation
+        
+        Phase 3 (Advanced):
+        - Performance optimization
+        - Advanced analytics
+        - Integration features
+
+  - type: textarea
+    id: testing_strategy
+    attributes:
+      label: Testing Strategy
+      description: How should this feature be tested?
+      placeholder: |
+        Testing Considerations:
+        
+        Medical Validation:
+        - How to validate medical accuracy?
+        - What test cases are needed?
+        - Who should review medical aspects?
+        
+        Technical Testing:
+        - Unit tests needed
+        - Integration test scenarios
+        - Performance testing requirements
+        
+        User Testing:
+        - What user scenarios to test?
+        - Accessibility testing needs
+        - Cross-platform testing requirements
+
+  - type: dropdown
+    id: effort
+    attributes:
+      label: Implementation Effort
+      description: How complex do you think this feature would be to implement?
+      options:
+        - Small - A few hours of work
+        - Medium - A few days of work
+        - Large - A few weeks of work
+        - Extra Large - Several weeks/months of work
+        - Unknown - Need more investigation
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribution Interest
+      description: Would you like to help implement this feature?
+      options:
+        - label: I would be interested in working on this feature
+        - label: I can help with medical validation and review
+        - label: I can help with testing and user feedback
+        - label: I can help with documentation
+        - label: I can provide ongoing support and maintenance
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Any other relevant information
+      placeholder: |
+        Any additional context about the feature request:
+        
+        - Related issues or discussions
+        - Similar features in other tools
+        - Regulatory or compliance considerations
+        - Timeline requirements or constraints
+        - Budget or resource considerations
+        - Community feedback already received
+
+  - type: markdown
+    attributes:
+      value: |
+        ---
+        
+        **Thank you for contributing to CardioPredict Pro!** 
+        
+        Your feature suggestions help us build better tools for cardiovascular medical education and research.
+        
+        **Remember**: All features must align with educational and research use only. We do not develop features intended for clinical diagnosis or treatment decisions.

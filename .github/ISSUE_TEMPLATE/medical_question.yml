@@ -1,0 +1,262 @@
+name: Medical Question
+description: Ask questions about medical aspects or clinical usage
+title: "[MEDICAL] "
+labels: ["question", "medical", "needs-expert-review"]
+assignees: ["Raghav0079"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **🏥 Medical Questions for CardioPredict Pro**
+        
+        This template is for questions about:
+        - Medical accuracy and validation
+        - Clinical parameter interpretation
+        - Educational usage guidelines
+        - Research methodology questions
+        
+        **⚠️ IMPORTANT MEDICAL DISCLAIMER**
+        - This tool is for educational purposes ONLY
+        - Do NOT use for actual medical diagnosis or treatment
+        - Always consult qualified healthcare professionals
+        - This is NOT a substitute for professional medical advice
+
+  - type: checkboxes
+    id: understanding
+    attributes:
+      label: Medical Disclaimer Acknowledgment
+      description: Please confirm your understanding
+      options:
+        - label: I understand this tool is for educational/research purposes only
+          required: true
+        - label: I will NOT use this for actual medical diagnosis or patient care
+          required: true
+        - label: I understand the limitations of AI in medical applications
+          required: true
+        - label: I will consult healthcare professionals for any medical decisions
+          required: true
+
+  - type: dropdown
+    id: question_type
+    attributes:
+      label: Type of Medical Question
+      description: What kind of medical question is this?
+      options:
+        - Clinical Parameters - Questions about medical inputs and measurements
+        - Risk Assessment - Questions about cardiovascular risk interpretation
+        - Medical Accuracy - Validation of predictions or medical logic
+        - Educational Use - How to use this tool for medical education
+        - Research Applications - Using this tool for cardiovascular research
+        - Medical Guidelines - Alignment with clinical guidelines and standards
+        - Safety Concerns - Medical safety or ethical concerns
+        - Literature References - Medical literature and evidence base
+        - Other Medical - Please specify in description
+    validations:
+      required: true
+
+  - type: dropdown
+    id: background
+    attributes:
+      label: Your Medical Background
+      description: What's your medical/educational background?
+      options:
+        - Medical Student - Currently studying medicine
+        - Resident/Trainee - Medical resident or specialty trainee
+        - Practicing Physician - Board-certified or practicing doctor
+        - Nurse/PA/NP - Nursing or physician assistant background
+        - Healthcare Administrator - Healthcare management or administration
+        - Medical Researcher - Clinical or biomedical researcher
+        - Educator/Professor - Medical education or academic
+        - Data Scientist - Healthcare data science or informatics
+        - Software Developer - Healthcare software development
+        - Student (Other) - Non-medical student using for education
+        - General Public - General interest in healthcare AI
+        - Other - Please specify in description
+    validations:
+      required: true
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Medical Question
+      description: What is your specific medical question?
+      placeholder: |
+        Please ask your specific question about the medical aspects of CardioPredict Pro.
+        
+        Examples:
+        - "How should I interpret a prediction where 2 out of 4 models show positive results?"
+        - "What are the clinical significance of the parameters used in this model?"
+        - "How does this tool align with current cardiovascular risk assessment guidelines?"
+        - "What are the limitations I should explain to medical students using this tool?"
+    validations:
+      required: true
+
+  - type: textarea
+    id: clinical_context
+    attributes:
+      label: Clinical Context
+      description: Provide context for your question
+      placeholder: |
+        Clinical/Educational Context:
+        
+        - What specific clinical scenario are you asking about?
+        - What educational setting will this be used in?
+        - What level of medical knowledge do you assume (medical students, residents, etc.)?
+        - Are there specific guidelines or protocols you need to align with?
+        
+        Example: "I'm developing a cardiovascular medicine curriculum for 3rd-year medical students and want to ensure the risk interpretations align with AHA/ACC guidelines."
+
+  - type: textarea
+    id: current_understanding
+    attributes:
+      label: Current Understanding
+      description: What do you already know about this topic?
+      placeholder: |
+        Share your current understanding:
+        
+        - What do you already know about this medical topic?
+        - What have you found in medical literature or guidelines?
+        - Where are you finding conflicting information or confusion?
+        - What specific aspects need clarification?
+        
+        This helps us provide more targeted and useful answers.
+
+  - type: textarea
+    id: specific_concerns
+    attributes:
+      label: Specific Medical Concerns
+      description: What specific medical concerns do you have?
+      placeholder: |
+        Medical Concerns:
+        
+        Safety Concerns:
+        - Are there specific patient populations this should not be used for education about?
+        - What medical contraindications should be emphasized?
+        - What safety warnings should be included?
+        
+        Accuracy Concerns:
+        - How accurate are the predictions for educational purposes?
+        - What are the known limitations and biases?
+        - How should false positives/negatives be explained?
+        
+        Ethical Concerns:
+        - Are there ethical considerations for using AI in medical education?
+        - How to prevent students from using this clinically?
+        - What consent or disclosure is needed?
+
+  - type: textarea
+    id: medical_literature
+    attributes:
+      label: Relevant Medical Literature
+      description: Any relevant medical literature or guidelines?
+      placeholder: |
+        Medical Literature/Guidelines:
+        
+        If you have specific medical references, guidelines, or literature that relate to your question:
+        
+        - Relevant clinical guidelines (AHA/ACC, ESC, etc.)
+        - Medical research papers
+        - Medical textbook references
+        - Professional society recommendations
+        - Regulatory guidance (FDA, etc.)
+        
+        Examples:
+        - "2019 AHA/ACC Primary Prevention Guidelines"
+        - "Pooled Cohort Equations for cardiovascular risk"
+        - "Framingham Risk Score methodology"
+
+  - type: textarea
+    id: use_case
+    attributes:
+      label: Intended Use Case
+      description: How do you plan to use this information?
+      placeholder: |
+        Intended Use Case:
+        
+        Educational Context:
+        - What will you teach students about this?
+        - What learning objectives does this support?
+        - How will you emphasize limitations and proper use?
+        
+        Research Context:
+        - What research questions are you investigating?
+        - How will this tool support your research methodology?
+        - What validation studies are you planning?
+        
+        Clinical Education Context:
+        - What clinical scenarios will you demonstrate?
+        - How will you prevent misuse for actual patient care?
+        - What supervision or oversight will be provided?
+
+  - type: textarea
+    id: expected_answer
+    attributes:
+      label: Type of Answer Needed
+      description: What kind of answer would be most helpful?
+      placeholder: |
+        What would be most helpful:
+        
+        - Simple explanation suitable for medical students?
+        - Detailed technical medical explanation?
+        - References to medical literature and guidelines?
+        - Practical guidance for educational use?
+        - Comparison with other medical tools or methods?
+        - Safety and limitation warnings?
+        - Step-by-step clinical reasoning explanation?
+
+  - type: dropdown
+    id: urgency
+    attributes:
+      label: Response Urgency
+      description: How quickly do you need an answer?
+      options:
+        - No rush - Whenever convenient
+        - Within a week - For upcoming curriculum planning
+        - Within a few days - For active research or teaching
+        - ASAP - For immediate educational or safety concerns
+
+  - type: checkboxes
+    id: follow_up
+    attributes:
+      label: Follow-up Interest
+      description: Would you like to contribute to improving this tool?
+      options:
+        - label: I can provide medical expertise for validation
+        - label: I can help review medical accuracy and recommendations
+        - label: I can provide feedback from educational use
+        - label: I can share results from research applications
+        - label: I can help with medical documentation improvements
+        - label: I can connect you with other medical experts
+
+  - type: textarea
+    id: additional_info
+    attributes:
+      label: Additional Information
+      description: Any other relevant information?
+      placeholder: |
+        Additional Context:
+        
+        - Institution or organization you're affiliated with
+        - Any specific medical specialties or expertise
+        - Related projects or research you're working on
+        - Other medical AI tools you've used for comparison
+        - Any regulatory or institutional requirements you must meet
+        - Timeline for your educational or research project
+
+  - type: markdown
+    attributes:
+      value: |
+        ---
+        
+        **Medical Expert Review**
+        
+        Medical questions will be reviewed by healthcare professionals and medical experts in our community. Response time may be longer than technical questions to ensure medical accuracy.
+        
+        **Disclaimer Reminder**: 
+        - This tool is for educational and research purposes only
+        - Answers provided are for informational purposes only
+        - Always consult qualified healthcare professionals for medical advice
+        - Do not use this tool or its predictions for patient care decisions
+        
+        **Thank you for helping us improve the medical accuracy and educational value of CardioPredict Pro!**
