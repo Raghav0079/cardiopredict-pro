@@ -350,7 +350,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Documentation**: [Project Wiki](https://github.com/Raghav0079/cardiopredict-pro/wiki)
 
 ### Maintainer
-- **Developer**: Raghav Singh
+- **Developer**: Raghav Mishra
 - **GitHub**: [@Raghav0079](https://github.com/Raghav0079)
 - **Portfolio**: [raghav0079.github.io](https://raghav0079.github.io)
 
