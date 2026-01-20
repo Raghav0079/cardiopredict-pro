@@ -14,7 +14,14 @@ import os
 import tempfile
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter, A4
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
+from reportlab.platypus import (
+    SimpleDocTemplate,
+    Table,
+    TableStyle,
+    Paragraph,
+    Spacer,
+    Image,
+)
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
 from reportlab.lib import colors
@@ -23,42 +30,70 @@ from reportlab.graphics.shapes import Drawing, Rect
 from reportlab.graphics.charts.barcharts import VerticalBarChart
 from reportlab.graphics.charts.legends import Legend
 from io import BytesIO
-warnings.filterwarnings('ignore')
+
+warnings.filterwarnings("ignore")
+
 
 # Environment loading function
 def load_env_vars():
     """Load environment variables from .env file"""
-    env_file = '.env'
+    env_file = ".env"
     if os.path.exists(env_file):
-        with open(env_file, 'r') as f:
+        with open(env_file, "r") as f:
             for line in f:
-                if '=' in line and not line.strip().startswith('#'):
-                    key, value = line.strip().split('=', 1)
+                if "=" in line and not line.strip().startswith("#"):
+                    key, value = line.strip().split("=", 1)
                     os.environ[key] = value
     else:
         print("ℹ️ .env file not found - using system environment variables")
+
 
 # Load environment variables
 load_env_vars()
 
 # Optional WandB integration - gracefully handles missing package or API key
 try:
-    from wandb_integration import init_wandb_tracking, log_training_data, log_prediction_data, create_wandb_dashboard, finish_wandb_run
+    from wandb_integration import (
+        init_wandb_tracking,
+        log_training_data,
+        log_prediction_data,
+        create_wandb_dashboard,
+        finish_wandb_run,
+    )
+
     WANDB_AVAILABLE = True
     print("📊 WandB integration available")
 except ImportError:
     WANDB_AVAILABLE = False
     print("ℹ️ WandB not available - continuing without tracking")
+
     # Define dummy functions
-    def init_wandb_tracking(*args, **kwargs): return None
-    def log_training_data(*args, **kwargs): return None
-    def log_prediction_data(*args, **kwargs): return None
-    def create_wandb_dashboard(*args, **kwargs): return None
-    def finish_wandb_run(*args, **kwargs): return None
+    def init_wandb_tracking(*args, **kwargs):
+        return None
+
+    def log_training_data(*args, **kwargs):
+        return None
+
+    def log_prediction_data(*args, **kwargs):
+        return None
+
+    def create_wandb_dashboard(*args, **kwargs):
+        return None
+
+    def finish_wandb_run(*args, **kwargs):
+        return None
+
 
 # Optional Database integration - gracefully handles missing credentials
 try:
-    from database_integration import save_prediction_to_db, get_recent_predictions_from_db, get_database_analytics, is_database_connected, init_database
+    from database_integration import (
+        save_prediction_to_db,
+        get_recent_predictions_from_db,
+        get_database_analytics,
+        is_database_connected,
+        init_database,
+    )
+
     DATABASE_AVAILABLE = True
     print("🗄️ Database integration available")
     # Initialize database connection
@@ -70,434 +105,690 @@ try:
 except ImportError:
     DATABASE_AVAILABLE = False
     print("ℹ️ Database integration not available - continuing without persistence")
+
     # Define dummy functions
-    def save_prediction_to_db(*args, **kwargs): return None
-    def get_recent_predictions_from_db(*args, **kwargs): return []
-    def get_database_analytics(*args, **kwargs): return {}
-    def is_database_connected(*args, **kwargs): return False
-    def init_database(*args, **kwargs): return False
+    def save_prediction_to_db(*args, **kwargs):
+        return None
+
+    def get_recent_predictions_from_db(*args, **kwargs):
+        return []
+
+    def get_database_analytics(*args, **kwargs):
+        return {}
+
+    def is_database_connected(*args, **kwargs):
+        return False
+
+    def init_database(*args, **kwargs):
+        return False
+
 
 def load_and_prepare_models():
-    """Load the dataset and train all models"""
+    """Load the dataset and train all models using combined real data"""
     print("Loading cardiovascular disease prediction models...")
-    
-    # Create synthetic dataset for demo
-    np.random.seed(42)
-    n_samples = 1000
-    df = pd.DataFrame({
-        'age': np.random.randint(29, 80, n_samples),
-        'sex': np.random.randint(0, 2, n_samples),
-        'cp': np.random.randint(0, 4, n_samples),
-        'trestbps': np.random.randint(90, 200, n_samples),
-        'chol': np.random.randint(126, 564, n_samples),
-        'fbs': np.random.randint(0, 2, n_samples),
-        'restecg': np.random.randint(0, 3, n_samples),
-        'thalach': np.random.randint(71, 202, n_samples),
-        'exang': np.random.randint(0, 2, n_samples),
-        'oldpeak': np.random.uniform(0, 6.2, n_samples),
-        'slope': np.random.randint(0, 3, n_samples),
-        'ca': np.random.randint(0, 4, n_samples),
-        'thal': np.random.randint(0, 4, n_samples),
-        'target': np.random.randint(0, 2, n_samples)
-    })
-    
+
+    # Try to load pre-trained models first
+    try:
+        with open("cardio_models_combined.pkl", "rb") as f:
+            model_package = pickle.load(f)
+        print("✅ Pre-trained models loaded from 'cardio_models_combined.pkl'")
+        print(
+            f"📊 Training info: {model_package['training_data_info']['total_samples']} total samples"
+        )
+        return model_package["models"], model_package["feature_names"]
+    except FileNotFoundError:
+        print("🔄 No pre-trained models found, training new models...")
+    except Exception as e:
+        print(f"⚠️ Error loading pre-trained models: {e}")
+        print("🔄 Training new models...")
+
+    try:
+        # Load the first dataset (existing)
+        df1 = pd.read_csv("Cardio_vascular.csv")
+        print(f"✅ Cardio_vascular.csv loaded: {df1.shape}")
+
+        # Load the second dataset (heart statlog)
+        df2 = pd.read_csv("heart_statlog_cleveland_hungary_final.csv")
+        print(f"✅ heart_statlog_cleveland_hungary_final.csv loaded: {df2.shape}")
+
+        # Rename columns in df2 to match df1 structure
+        df2_renamed = df2.copy()
+        df2_renamed.columns = [
+            "age",
+            "sex",
+            "cp",
+            "trestbps",
+            "chol",
+            "fbs",
+            "restecg",
+            "thalach",
+            "exang",
+            "oldpeak",
+            "slope",
+            "target",
+        ]
+
+        # Add missing features to df2 with default values
+        # Heart statlog dataset is missing 'ca' and 'thal' features
+        df2_renamed["ca"] = 0  # Default value for number of major vessels
+        df2_renamed["thal"] = 2  # Default value for thalassemia (2 = normal)
+
+        # Reorder columns to match df1
+        df2_renamed = df2_renamed[df1.columns]
+
+        print("✅ Column alignment completed with feature imputation")
+
+        # Combine both datasets
+        df = pd.concat([df1, df2_renamed], ignore_index=True)
+        print(f"✅ Combined dataset shape: {df.shape}")
+        print(
+            f"📊 Total samples: {len(df)} (Cardio: {len(df1)}, Heart Statlog: {len(df2_renamed)})"
+        )
+
+    except FileNotFoundError as e:
+        print(f"❌ Error loading CSV files: {e}")
+        print("🔄 Falling back to synthetic data...")
+        # Create synthetic dataset as fallback
+        np.random.seed(42)
+        n_samples = 1000
+        df = pd.DataFrame(
+            {
+                "age": np.random.randint(29, 80, n_samples),
+                "sex": np.random.randint(0, 2, n_samples),
+                "cp": np.random.randint(0, 4, n_samples),
+                "trestbps": np.random.randint(90, 200, n_samples),
+                "chol": np.random.randint(126, 564, n_samples),
+                "fbs": np.random.randint(0, 2, n_samples),
+                "restecg": np.random.randint(0, 3, n_samples),
+                "thalach": np.random.randint(71, 202, n_samples),
+                "exang": np.random.randint(0, 2, n_samples),
+                "oldpeak": np.random.uniform(0, 6.2, n_samples),
+                "slope": np.random.randint(0, 3, n_samples),
+                "ca": np.random.randint(0, 4, n_samples),
+                "thal": np.random.randint(0, 4, n_samples),
+                "target": np.random.randint(0, 2, n_samples),
+            }
+        )
+
     # Remove duplicates
     df.drop_duplicates(inplace=True)
-    
+
     # Prepare features and target
-    X = df.drop('target', axis=1)
-    y = df['target']
-    
+    X = df.drop("target", axis=1)
+    y = df["target"]
+
     # Split the data
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-    
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42
+    )
+
     # Train all models
     models = {}
-    
+    model_metrics = {}
+
     # Logistic Regression (tuned)
-    models['Logistic Regression'] = LogisticRegression(C=1, solver='liblinear', random_state=42)
-    models['Logistic Regression'].fit(X_train, y_train)
-    
+    models["Logistic Regression"] = LogisticRegression(
+        C=1, solver="liblinear", random_state=42
+    )
+    models["Logistic Regression"].fit(X_train, y_train)
+
     # Random Forest
-    models['Random Forest'] = RandomForestClassifier(random_state=42)
-    models['Random Forest'].fit(X_train, y_train)
-    
+    models["Random Forest"] = RandomForestClassifier(random_state=42)
+    models["Random Forest"].fit(X_train, y_train)
+
     # SVM
-    models['SVM'] = SVC(probability=True, random_state=42)
-    models['SVM'].fit(X_train, y_train)
-    
+    models["SVM"] = SVC(probability=True, random_state=42)
+    models["SVM"].fit(X_train, y_train)
+
     # Gradient Boosting
-    models['Gradient Boosting'] = GradientBoostingClassifier(random_state=42)
-    models['Gradient Boosting'].fit(X_train, y_train)
-    
+    models["Gradient Boosting"] = GradientBoostingClassifier(random_state=42)
+    models["Gradient Boosting"].fit(X_train, y_train)
+
+    # Evaluate all models and store metrics
+    from sklearn.metrics import accuracy_score, roc_auc_score, f1_score
+
+    for model_name, model in models.items():
+        y_pred = model.predict(X_test)
+        y_pred_proba = model.predict_proba(X_test)[:, 1]
+
+        model_metrics[model_name] = {
+            "accuracy": accuracy_score(y_test, y_pred),
+            "roc_auc": roc_auc_score(y_test, y_pred_proba),
+            "f1_score": f1_score(y_test, y_pred),
+        }
+
+        print(
+            f"✅ {model_name} - Accuracy: {model_metrics[model_name]['accuracy']:.3f}, "
+            f"ROC AUC: {model_metrics[model_name]['roc_auc']:.3f}, "
+            f"F1-Score: {model_metrics[model_name]['f1_score']:.3f}"
+        )
+
+    # Save models for future use
+    try:
+        import pickle
+
+        with open("trained_models.pkl", "wb") as f:
+            pickle.dump(
+                {
+                    "models": models,
+                    "feature_names": X.columns.tolist(),
+                    "metrics": model_metrics,
+                },
+                f,
+            )
+        print("✅ Models saved to 'trained_models.pkl'")
+    except Exception as e:
+        print(f"⚠️ Could not save models: {e}")
+
     print("Models loaded successfully!")
     return models, X.columns.tolist()
+
 
 # Load models and feature names
 print("Loading cardiovascular disease prediction models...")
 models, feature_names = load_and_prepare_models()
 print("Models loaded successfully!")
 
+
 def generate_pdf_report(report_data, input_data):
     """Generate a professional medical-grade PDF report for cardiovascular assessment"""
-    
+
     # Create a temporary file for the PDF
-    with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp_file:
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
         pdf_path = tmp_file.name
-    
+
     # Create the PDF document with professional margins
-    doc = SimpleDocTemplate(pdf_path, pagesize=letter, rightMargin=50, leftMargin=50, 
-                           topMargin=50, bottomMargin=50)
-    
+    doc = SimpleDocTemplate(
+        pdf_path,
+        pagesize=letter,
+        rightMargin=50,
+        leftMargin=50,
+        topMargin=50,
+        bottomMargin=50,
+    )
+
     # Define professional medical styles - optimized for smaller PDF
     styles = getSampleStyleSheet()
-    
+
     # Medical Header Style - reduced size
     medical_title = ParagraphStyle(
-        'MedicalTitle',
-        parent=styles['Heading1'],
+        "MedicalTitle",
+        parent=styles["Heading1"],
         fontSize=18,
         spaceAfter=12,
         spaceBefore=8,
-        textColor=colors.HexColor('#1565C0'),
+        textColor=colors.HexColor("#1565C0"),
         alignment=TA_CENTER,
-        fontName='Helvetica-Bold',
+        fontName="Helvetica-Bold",
         borderWidth=1,
-        borderColor=colors.HexColor('#1565C0'),
-        borderPadding=6
+        borderColor=colors.HexColor("#1565C0"),
+        borderPadding=6,
     )
-    
+
     # Institution/Facility Style - reduced
     facility_style = ParagraphStyle(
-        'FacilityStyle',
-        parent=styles['Normal'],
+        "FacilityStyle",
+        parent=styles["Normal"],
         fontSize=10,
         spaceAfter=10,
-        textColor=colors.HexColor('#424242'),
+        textColor=colors.HexColor("#424242"),
         alignment=TA_CENTER,
-        fontName='Helvetica-Bold'
+        fontName="Helvetica-Bold",
     )
-    
+
     # Section Header Style - compact
     section_header = ParagraphStyle(
-        'SectionHeader',
-        parent=styles['Heading2'],
+        "SectionHeader",
+        parent=styles["Heading2"],
         fontSize=12,
         spaceAfter=6,
         spaceBefore=8,
-        textColor=colors.HexColor('#0D47A1'),
-        fontName='Helvetica-Bold',
+        textColor=colors.HexColor("#0D47A1"),
+        fontName="Helvetica-Bold",
         borderWidth=0.5,
-        borderColor=colors.HexColor('#0D47A1'),
+        borderColor=colors.HexColor("#0D47A1"),
         leftIndent=0,
-        borderPadding=3
+        borderPadding=3,
     )
-    
+
     # Subsection Style - compact
     subsection_style = ParagraphStyle(
-        'SubsectionStyle',
-        parent=styles['Heading3'],
+        "SubsectionStyle",
+        parent=styles["Heading3"],
         fontSize=10,
         spaceAfter=4,
         spaceBefore=6,
-        textColor=colors.HexColor('#1976D2'),
-        fontName='Helvetica-Bold'
+        textColor=colors.HexColor("#1976D2"),
+        fontName="Helvetica-Bold",
     )
-    
+
     # Clinical Text Style - compact
     clinical_style = ParagraphStyle(
-        'ClinicalStyle',
-        parent=styles['Normal'],
+        "ClinicalStyle",
+        parent=styles["Normal"],
         fontSize=9,
         spaceAfter=4,
-        fontName='Helvetica',
-        leftIndent=8
+        fontName="Helvetica",
+        leftIndent=8,
     )
-    
+
     # Important Notice Style - compact
     notice_style = ParagraphStyle(
-        'NoticeStyle',
-        parent=styles['Normal'],
+        "NoticeStyle",
+        parent=styles["Normal"],
         fontSize=8,
         spaceAfter=6,
-        textColor=colors.HexColor('#D32F2F'),
-        fontName='Helvetica-Bold',
+        textColor=colors.HexColor("#D32F2F"),
+        fontName="Helvetica-Bold",
         borderWidth=1,
-        borderColor=colors.HexColor('#D32F2F'),
+        borderColor=colors.HexColor("#D32F2F"),
         borderPadding=4,
-        backColor=colors.HexColor('#FFEBEE')
+        backColor=colors.HexColor("#FFEBEE"),
     )
-    
+
     # Build the professional medical report - optimized
     story = []
-    
+
     # Medical Report Header with Professional Branding - compact
     story.append(Paragraph("CARDIOVASCULAR RISK ASSESSMENT", medical_title))
     story.append(Paragraph("CardioPredict Pro Medical AI System", facility_style))
     story.append(Spacer(1, 8))
-    
+
     # Compact Medical Watermark
-    story.append(Paragraph(
-        "<i>CONFIDENTIAL MEDICAL REPORT</i>", 
-        ParagraphStyle('Watermark', parent=styles['Normal'], fontSize=8, textColor=colors.grey, alignment=TA_CENTER, fontName='Helvetica-Oblique')
-    ))
+    story.append(
+        Paragraph(
+            "<i>CONFIDENTIAL MEDICAL REPORT</i>",
+            ParagraphStyle(
+                "Watermark",
+                parent=styles["Normal"],
+                fontSize=8,
+                textColor=colors.grey,
+                alignment=TA_CENTER,
+                fontName="Helvetica-Oblique",
+            ),
+        )
+    )
     story.append(Spacer(1, 10))
-    
+
     # Report Information Header - compact
     report_info = [
-        ['REPORT INFORMATION', ''],
-        ['Report ID:', f"CVD-{datetime.now().strftime('%Y%m%d-%H%M%S')}"],
-        ['Generated:', datetime.now().strftime('%B %d, %Y at %H:%M')],
-        ['AI Version:', 'CardioPredict Pro v1.0']
+        ["REPORT INFORMATION", ""],
+        ["Report ID:", f"CVD-{datetime.now().strftime('%Y%m%d-%H%M%S')}"],
+        ["Generated:", datetime.now().strftime("%B %d, %Y at %H:%M")],
+        ["AI Version:", "CardioPredict Pro v1.0"],
     ]
-    
-    report_table = Table(report_info, colWidths=[2.2*inch, 4.3*inch])
-    report_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (1, 0), colors.HexColor('#0D47A1')),
-        ('TEXTCOLOR', (0, 0), (1, 0), colors.white),
-        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 10),
-        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 1), (-1, -1), 8),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 4),
-        ('TOPPADDING', (0, 0), (-1, 0), 4),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#F5F5F5')])
-    ]))
-    
+
+    report_table = Table(report_info, colWidths=[2.2 * inch, 4.3 * inch])
+    report_table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (1, 0), colors.HexColor("#0D47A1")),
+                ("TEXTCOLOR", (0, 0), (1, 0), colors.white),
+                ("ALIGN", (0, 0), (-1, -1), "LEFT"),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, 0), 10),
+                ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
+                ("FONTSIZE", (0, 1), (-1, -1), 8),
+                ("BOTTOMPADDING", (0, 0), (-1, 0), 4),
+                ("TOPPADDING", (0, 0), (-1, 0), 4),
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.black),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                (
+                    "ROWBACKGROUNDS",
+                    (0, 1),
+                    (-1, -1),
+                    [colors.white, colors.HexColor("#F5F5F5")],
+                ),
+            ]
+        )
+    )
+
     story.append(report_table)
     story.append(Spacer(1, 10))
-    
+
     # Patient Demographics Section - compact
     story.append(Paragraph("I. PATIENT DEMOGRAPHICS", section_header))
     story.append(Spacer(1, 4))
-    
+
     patient_info = [
-        ['PATIENT IDENTIFICATION', ''],
-        ['Name:', report_data['patient_name']],
-        ['Age:', f"{report_data['age']} years"],
-        ['Sex:', report_data['sex']],
-        ['Assessment Date:', report_data['timestamp']]
+        ["PATIENT IDENTIFICATION", ""],
+        ["Name:", report_data["patient_name"]],
+        ["Age:", f"{report_data['age']} years"],
+        ["Sex:", report_data["sex"]],
+        ["Assessment Date:", report_data["timestamp"]],
     ]
-    
-    patient_table = Table(patient_info, colWidths=[2.2*inch, 4.3*inch])
-    patient_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (1, 0), colors.HexColor('#1976D2')),
-        ('TEXTCOLOR', (0, 0), (1, 0), colors.white),
-        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 10),
-        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 1), (-1, -1), 8),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#E3F2FD')])
-    ]))
-    
+
+    patient_table = Table(patient_info, colWidths=[2.2 * inch, 4.3 * inch])
+    patient_table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (1, 0), colors.HexColor("#1976D2")),
+                ("TEXTCOLOR", (0, 0), (1, 0), colors.white),
+                ("ALIGN", (0, 0), (-1, -1), "LEFT"),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, 0), 10),
+                ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
+                ("FONTSIZE", (0, 1), (-1, -1), 8),
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.black),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                (
+                    "ROWBACKGROUNDS",
+                    (0, 1),
+                    (-1, -1),
+                    [colors.white, colors.HexColor("#E3F2FD")],
+                ),
+            ]
+        )
+    )
+
     story.append(patient_table)
     story.append(Spacer(1, 8))
-    
+
     # Clinical Assessment Parameters Section - consolidated
     story.append(Paragraph("II. CLINICAL PARAMETERS", section_header))
     story.append(Spacer(1, 4))
-    
+
     # Consolidated clinical data in one table
     clinical_data = [
-        ['PARAMETER', 'VALUE', 'REFERENCE'],
-        ['Age', f"{input_data['age'].iloc[0]} years", 'Adult'],
-        ['Sex', 'Male' if input_data['sex'].iloc[0] == 1 else 'Female', 'M/F'],
-        ['Chest Pain', ['Typical Angina', 'Atypical Angina', 'Non-anginal', 'Asymptomatic'][input_data['cp'].iloc[0]], 'Symptom type'],
-        ['Resting BP', f"{input_data['trestbps'].iloc[0]} mmHg", '<120/80'],
-        ['Cholesterol', f"{input_data['chol'].iloc[0]} mg/dL", '<200'],
-        ['Fasting Glucose', '>120' if input_data['fbs'].iloc[0] == 1 else '≤120', '<100 mg/dL'],
-        ['Resting ECG', ['Normal', 'ST-T Abnormal', 'LVH'][input_data['restecg'].iloc[0]], 'Rhythm'],
-        ['Max Heart Rate', f"{input_data['thalach'].iloc[0]} bpm", f">{220-input_data['age'].iloc[0]}"],
-        ['Exercise Angina', 'Yes' if input_data['exang'].iloc[0] == 1 else 'No', 'Present/Absent'],
-        ['ST Depression', f"{input_data['oldpeak'].iloc[0]} mm", 'Exercise change'],
-        ['ST Slope', ['Up', 'Flat', 'Down'][input_data['slope'].iloc[0]], 'Exercise pattern'],
-        ['Vessels (Fluoro)', f"{input_data['ca'].iloc[0]}", 'Major vessels'],
-        ['Thalassemia', ['Normal', 'Fixed', 'Reversible', 'N/A'][input_data['thal'].iloc[0]], 'Perfusion']
+        ["PARAMETER", "VALUE", "REFERENCE"],
+        ["Age", f"{input_data['age'].iloc[0]} years", "Adult"],
+        ["Sex", "Male" if input_data["sex"].iloc[0] == 1 else "Female", "M/F"],
+        [
+            "Chest Pain",
+            ["Typical Angina", "Atypical Angina", "Non-anginal", "Asymptomatic"][
+                input_data["cp"].iloc[0]
+            ],
+            "Symptom type",
+        ],
+        ["Resting BP", f"{input_data['trestbps'].iloc[0]} mmHg", "<120/80"],
+        ["Cholesterol", f"{input_data['chol'].iloc[0]} mg/dL", "<200"],
+        [
+            "Fasting Glucose",
+            ">120" if input_data["fbs"].iloc[0] == 1 else "≤120",
+            "<100 mg/dL",
+        ],
+        [
+            "Resting ECG",
+            ["Normal", "ST-T Abnormal", "LVH"][input_data["restecg"].iloc[0]],
+            "Rhythm",
+        ],
+        [
+            "Max Heart Rate",
+            f"{input_data['thalach'].iloc[0]} bpm",
+            f">{220-input_data['age'].iloc[0]}",
+        ],
+        [
+            "Exercise Angina",
+            "Yes" if input_data["exang"].iloc[0] == 1 else "No",
+            "Present/Absent",
+        ],
+        ["ST Depression", f"{input_data['oldpeak'].iloc[0]} mm", "Exercise change"],
+        [
+            "ST Slope",
+            ["Up", "Flat", "Down"][input_data["slope"].iloc[0]],
+            "Exercise pattern",
+        ],
+        ["Vessels (Fluoro)", f"{input_data['ca'].iloc[0]}", "Major vessels"],
+        [
+            "Thalassemia",
+            ["Normal", "Fixed", "Reversible", "N/A"][input_data["thal"].iloc[0]],
+            "Perfusion",
+        ],
     ]
-    
-    clinical_table = Table(clinical_data, colWidths=[2.2*inch, 2.2*inch, 2.1*inch])
-    clinical_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (2, 0), colors.HexColor('#4CAF50')),
-        ('TEXTCOLOR', (0, 0), (2, 0), colors.white),
-        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 8),
-        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 1), (-1, -1), 7),
-        ('GRID', (0, 0), (-1, -1), 0.3, colors.black),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#F1F8E9')])
-    ]))
-    
+
+    clinical_table = Table(
+        clinical_data, colWidths=[2.2 * inch, 2.2 * inch, 2.1 * inch]
+    )
+    clinical_table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (2, 0), colors.HexColor("#4CAF50")),
+                ("TEXTCOLOR", (0, 0), (2, 0), colors.white),
+                ("ALIGN", (0, 0), (-1, -1), "LEFT"),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, 0), 8),
+                ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
+                ("FONTSIZE", (0, 1), (-1, -1), 7),
+                ("GRID", (0, 0), (-1, -1), 0.3, colors.black),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                (
+                    "ROWBACKGROUNDS",
+                    (0, 1),
+                    (-1, -1),
+                    [colors.white, colors.HexColor("#F1F8E9")],
+                ),
+            ]
+        )
+    )
+
     story.append(clinical_table)
     story.append(Spacer(1, 10))
-    
+
     # AI Analysis Results Section - simplified
     story.append(Paragraph("III. AI ANALYSIS", section_header))
     story.append(Spacer(1, 4))
-    
-    model_data = [['MODEL', 'PREDICTION', 'PROBABILITY']]
-    
-    for model_name, result in report_data['results'].items():
-        risk_prob = float(report_data['probabilities'][model_name]['Heart Disease'])
+
+    model_data = [["MODEL", "PREDICTION", "PROBABILITY"]]
+
+    for model_name, result in report_data["results"].items():
+        risk_prob = float(report_data["probabilities"][model_name]["Heart Disease"])
         prediction = "POSITIVE" if "Detected" in result else "NEGATIVE"
         model_data.append([model_name, prediction, f"{risk_prob:.1%}"])
-    
-    model_table = Table(model_data, colWidths=[2.2*inch, 2.2*inch, 2.1*inch])
-    model_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (2, 0), colors.HexColor('#1565C0')),
-        ('TEXTCOLOR', (0, 0), (2, 0), colors.white),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 8),
-        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 1), (-1, -1), 7),
-        ('GRID', (0, 0), (-1, -1), 0.3, colors.black),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-    ]))
-    
+
+    model_table = Table(model_data, colWidths=[2.2 * inch, 2.2 * inch, 2.1 * inch])
+    model_table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (2, 0), colors.HexColor("#1565C0")),
+                ("TEXTCOLOR", (0, 0), (2, 0), colors.white),
+                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, 0), 8),
+                ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
+                ("FONTSIZE", (0, 1), (-1, -1), 7),
+                ("GRID", (0, 0), (-1, -1), 0.3, colors.black),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ]
+        )
+    )
+
     # Color code the predictions
-    for i, (model_name, result) in enumerate(report_data['results'].items()):
+    for i, (model_name, result) in enumerate(report_data["results"].items()):
         row_idx = i + 1
         if "Detected" in result:
-            model_table.setStyle(TableStyle([
-                ('BACKGROUND', (1, row_idx), (1, row_idx), colors.HexColor('#FFCDD2')),
-                ('TEXTCOLOR', (1, row_idx), (1, row_idx), colors.HexColor('#C62828'))
-            ]))
+            model_table.setStyle(
+                TableStyle(
+                    [
+                        (
+                            "BACKGROUND",
+                            (1, row_idx),
+                            (1, row_idx),
+                            colors.HexColor("#FFCDD2"),
+                        ),
+                        (
+                            "TEXTCOLOR",
+                            (1, row_idx),
+                            (1, row_idx),
+                            colors.HexColor("#C62828"),
+                        ),
+                    ]
+                )
+            )
         else:
-            model_table.setStyle(TableStyle([
-                ('BACKGROUND', (1, row_idx), (1, row_idx), colors.HexColor('#C8E6C9')),
-                ('TEXTCOLOR', (1, row_idx), (1, row_idx), colors.HexColor('#2E7D32'))
-            ]))
-    
+            model_table.setStyle(
+                TableStyle(
+                    [
+                        (
+                            "BACKGROUND",
+                            (1, row_idx),
+                            (1, row_idx),
+                            colors.HexColor("#C8E6C9"),
+                        ),
+                        (
+                            "TEXTCOLOR",
+                            (1, row_idx),
+                            (1, row_idx),
+                            colors.HexColor("#2E7D32"),
+                        ),
+                    ]
+                )
+            )
+
     story.append(model_table)
     story.append(Spacer(1, 8))
-    
+
     # Clinical Consensus - compact
     consensus = f"{report_data['positive_predictions']}/{len(report_data['results'])}"
-    risk_level = "HIGH" if report_data['positive_predictions'] >= 3 else "MODERATE" if report_data['positive_predictions'] >= 2 else "LOW"
-    
+    risk_level = (
+        "HIGH"
+        if report_data["positive_predictions"] >= 3
+        else "MODERATE" if report_data["positive_predictions"] >= 2 else "LOW"
+    )
+
     consensus_data = [
-        ['CONSENSUS RESULT', 'VALUE'],
-        ['Risk Level', f"{risk_level} RISK"],
-        ['Model Agreement', f"{consensus} models positive"],
-        ['Confidence', report_data['confidence_level']]
+        ["CONSENSUS RESULT", "VALUE"],
+        ["Risk Level", f"{risk_level} RISK"],
+        ["Model Agreement", f"{consensus} models positive"],
+        ["Confidence", report_data["confidence_level"]],
     ]
-    
-    consensus_table = Table(consensus_data, colWidths=[3.25*inch, 3.25*inch])
-    consensus_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (1, 0), colors.HexColor('#424242')),
-        ('TEXTCOLOR', (0, 0), (1, 0), colors.white),
-        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 8),
-        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 1), (-1, -1), 7),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE')
-    ]))
-    
+
+    consensus_table = Table(consensus_data, colWidths=[3.25 * inch, 3.25 * inch])
+    consensus_table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (1, 0), colors.HexColor("#424242")),
+                ("TEXTCOLOR", (0, 0), (1, 0), colors.white),
+                ("ALIGN", (0, 0), (-1, -1), "LEFT"),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, 0), 8),
+                ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
+                ("FONTSIZE", (0, 1), (-1, -1), 7),
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.black),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ]
+        )
+    )
+
     story.append(consensus_table)
     story.append(Spacer(1, 10))
-    
+
     # Clinical Recommendations - compact
     story.append(Paragraph("IV. RECOMMENDATIONS", section_header))
     story.append(Spacer(1, 4))
-    
+
     # Simplified recommendations based on risk level
-    if report_data['positive_predictions'] >= 3:
+    if report_data["positive_predictions"] >= 3:
         rec_text = "HIGH RISK: Immediate cardiology consultation recommended. Consider comprehensive cardiac evaluation and risk factor optimization."
-    elif report_data['positive_predictions'] >= 2:
+    elif report_data["positive_predictions"] >= 2:
         rec_text = "MODERATE RISK: Schedule cardiology consultation within 2-4 weeks. Implement lifestyle modifications and monitor risk factors."
     else:
         rec_text = "LOW RISK: Continue routine preventive care. Maintain healthy lifestyle and regular cardiovascular screening."
-    
+
     story.append(Paragraph(rec_text, clinical_style))
     story.append(Spacer(1, 10))
-    
+
     # Simplified Medical Disclaimer
     story.append(Paragraph("V. DISCLAIMER", section_header))
     story.append(Spacer(1, 4))
-    
+
     disclaimer_text = """
     This AI assessment is for educational purposes only and does not replace professional 
     medical diagnosis. Results should be interpreted by qualified healthcare professionals. 
     Always consult your physician for medical advice and treatment decisions.
     """
-    
+
     story.append(Paragraph(disclaimer_text, notice_style))
     story.append(Spacer(1, 10))
-    
+
     # Simple Footer
     footer_data = [
-        ['Report ID:', f"CVD-{datetime.now().strftime('%Y%m%d-%H%M%S')}"],
-        ['Generated:', datetime.now().strftime('%Y-%m-%d %H:%M:%S')],
-        ['System:', 'CardioPredict Pro v1.0']
+        ["Report ID:", f"CVD-{datetime.now().strftime('%Y%m%d-%H%M%S')}"],
+        ["Generated:", datetime.now().strftime("%Y-%m-%d %H:%M:%S")],
+        ["System:", "CardioPredict Pro v1.0"],
     ]
-    
-    footer_table = Table(footer_data, colWidths=[2.2*inch, 4.3*inch])
-    footer_table.setStyle(TableStyle([
-        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 0), (-1, -1), 7),
-        ('GRID', (0, 0), (-1, -1), 0.3, colors.grey),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE')
-    ]))
-    
+
+    footer_table = Table(footer_data, colWidths=[2.2 * inch, 4.3 * inch])
+    footer_table.setStyle(
+        TableStyle(
+            [
+                ("ALIGN", (0, 0), (-1, -1), "LEFT"),
+                ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
+                ("FONTSIZE", (0, 0), (-1, -1), 7),
+                ("GRID", (0, 0), (-1, -1), 0.3, colors.grey),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ]
+        )
+    )
+
     story.append(footer_table)
-    
+
     # Build the PDF
     doc.build(story)
-    
+
     return pdf_path
 
-def predict_heart_disease(patient_name, age, sex, chest_pain_type, resting_bp, cholesterol, 
-                         fasting_blood_sugar, rest_ecg, max_heart_rate, 
-                         exercise_angina, st_depression, slope, 
-                         colored_vessels, thalassemia):
+
+def predict_heart_disease(
+    patient_name,
+    age,
+    sex,
+    chest_pain_type,
+    resting_bp,
+    cholesterol,
+    fasting_blood_sugar,
+    rest_ecg,
+    max_heart_rate,
+    exercise_angina,
+    st_depression,
+    slope,
+    colored_vessels,
+    thalassemia,
+):
     """Make predictions using all models"""
-    
+
     # Create input dataframe
-    input_data = pd.DataFrame({
-        'age': [age],
-        'sex': [sex],
-        'cp': [chest_pain_type],
-        'trestbps': [resting_bp],
-        'chol': [cholesterol],
-        'fbs': [fasting_blood_sugar],
-        'restecg': [rest_ecg],
-        'thalach': [max_heart_rate],
-        'exang': [exercise_angina],
-        'oldpeak': [st_depression],
-        'slope': [slope],
-        'ca': [colored_vessels],
-        'thal': [thalassemia]
-    })
-    
+    input_data = pd.DataFrame(
+        {
+            "age": [age],
+            "sex": [sex],
+            "cp": [chest_pain_type],
+            "trestbps": [resting_bp],
+            "chol": [cholesterol],
+            "fbs": [fasting_blood_sugar],
+            "restecg": [rest_ecg],
+            "thalach": [max_heart_rate],
+            "exang": [exercise_angina],
+            "oldpeak": [st_depression],
+            "slope": [slope],
+            "ca": [colored_vessels],
+            "thal": [thalassemia],
+        }
+    )
+
     # Get predictions from all models
     results = {}
     probabilities = {}
-    
+
     for model_name, model in models.items():
         prediction = model.predict(input_data)[0]
         probability = model.predict_proba(input_data)[0]
-        
-        results[model_name] = "Heart Disease Detected" if prediction == 1 else "No Heart Disease"
+
+        results[model_name] = (
+            "Heart Disease Detected" if prediction == 1 else "No Heart Disease"
+        )
         probabilities[model_name] = {
-            'No Heart Disease': f"{probability[0]:.3f}",
-            'Heart Disease': f"{probability[1]:.3f}"
+            "No Heart Disease": f"{probability[0]:.3f}",
+            "Heart Disease": f"{probability[1]:.3f}",
         }
-    
+
     # Create summary
-    positive_predictions = sum(1 for model_name, result in results.items() if "Detected" in result)
-    confidence_level = "High" if positive_predictions >= 3 or positive_predictions == 0 else "Medium"
-    
+    positive_predictions = sum(
+        1 for model_name, result in results.items() if "Detected" in result
+    )
+    confidence_level = (
+        "High" if positive_predictions >= 3 or positive_predictions == 0 else "Medium"
+    )
+
     if positive_predictions >= 3:
         overall_result = "⚠️ HIGH RISK: Multiple models indicate potential heart disease"
         recommendation = "Please consult with a healthcare professional immediately for proper evaluation."
@@ -505,9 +796,11 @@ def predict_heart_disease(patient_name, age, sex, chest_pain_type, resting_bp, c
         overall_result = "⚡ MODERATE RISK: Some models indicate potential concerns"
         recommendation = "Consider scheduling a check-up with your healthcare provider."
     else:
-        overall_result = "✅ LOW RISK: Models suggest lower probability of heart disease"
+        overall_result = (
+            "✅ LOW RISK: Models suggest lower probability of heart disease"
+        )
         recommendation = "Maintain a healthy lifestyle and regular check-ups."
-    
+
     # Create detailed results string with professional formatting
     detailed_results = """
 ## 🏥 **Cardiovascular Risk Assessment Report**
@@ -515,15 +808,17 @@ def predict_heart_disease(patient_name, age, sex, chest_pain_type, resting_bp, c
 ### 📊 **Individual Model Analysis**
 
 """
-    
+
     for model_name, result in results.items():
-        prob_disease = float(probabilities[model_name]['Heart Disease'])
-        prob_no_disease = float(probabilities[model_name]['No Heart Disease'])
-        
+        prob_disease = float(probabilities[model_name]["Heart Disease"])
+        prob_no_disease = float(probabilities[model_name]["No Heart Disease"])
+
         # Status indicator
         status_icon = "🔴" if "Detected" in result else "🟢"
-        confidence_bar = "█" * int(prob_disease * 10) + "░" * (10 - int(prob_disease * 10))
-        
+        confidence_bar = "█" * int(prob_disease * 10) + "░" * (
+            10 - int(prob_disease * 10)
+        )
+
         detailed_results += f"""
 **{status_icon} {model_name}**
 - **Prediction:** {result}
@@ -531,10 +826,10 @@ def predict_heart_disease(patient_name, age, sex, chest_pain_type, resting_bp, c
 - **No Risk Probability:** {prob_no_disease:.1%}
 
 """
-    
+
     # Overall assessment with professional medical language
     risk_percentage = (positive_predictions / len(models)) * 100
-    
+
     if positive_predictions >= 3:
         overall_result = f"🚨 **HIGH RISK** ({risk_percentage:.0f}% model consensus)"
         recommendation = """
@@ -543,16 +838,18 @@ def predict_heart_disease(patient_name, age, sex, chest_pain_type, resting_bp, c
 - Consider comprehensive cardiac evaluation
 - Implement immediate lifestyle modifications
 - Monitor symptoms closely"""
-        
+
     elif positive_predictions >= 2:
-        overall_result = f"⚡ **MODERATE RISK** ({risk_percentage:.0f}% model consensus)"
+        overall_result = (
+            f"⚡ **MODERATE RISK** ({risk_percentage:.0f}% model consensus)"
+        )
         recommendation = """
 **Follow-up Recommended:**
 - Schedule appointment with primary care physician
 - Consider cardiac screening tests
 - Implement preventive lifestyle changes
 - Regular monitoring advised"""
-        
+
     else:
         overall_result = f"✅ **LOW RISK** ({risk_percentage:.0f}% model consensus)"
         recommendation = """
@@ -561,7 +858,7 @@ def predict_heart_disease(patient_name, age, sex, chest_pain_type, resting_bp, c
 - Continue regular check-ups
 - Monitor risk factors periodically
 - Stay physically active"""
-    
+
     detailed_results += f"""
 ---
 
@@ -586,200 +883,297 @@ def predict_heart_disease(patient_name, age, sex, chest_pain_type, resting_bp, c
 
 *Report generated on {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')}*
 """
-    
-# Create professional visualization
-    plt.style.use('default')  # Use default style instead of seaborn-v0_8  
+
+    # Create professional visualization
+    plt.style.use("default")  # Use default style instead of seaborn-v0_8
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
-    fig.patch.set_facecolor('#f8f9fa')
-    
+    fig.patch.set_facecolor("#f8f9fa")
+
     # Enhanced bar chart of predictions
     model_names = list(results.keys())
     predictions = [1 if "Detected" in result else 0 for result in results.values()]
-    colors = ['#dc3545' if pred == 1 else '#28a745' for pred in predictions]
-    
-    bars1 = ax1.bar(model_names, predictions, color=colors, alpha=0.8, edgecolor='white', linewidth=2)
-    ax1.set_ylabel('Risk Assessment', fontsize=12, fontweight='bold')
-    ax1.set_title('Model Risk Predictions', fontsize=14, fontweight='bold', pad=20)
+    colors = ["#dc3545" if pred == 1 else "#28a745" for pred in predictions]
+
+    bars1 = ax1.bar(
+        model_names,
+        predictions,
+        color=colors,
+        alpha=0.8,
+        edgecolor="white",
+        linewidth=2,
+    )
+    ax1.set_ylabel("Risk Assessment", fontsize=12, fontweight="bold")
+    ax1.set_title("Model Risk Predictions", fontsize=14, fontweight="bold", pad=20)
     ax1.set_ylim(0, 1.2)
-    ax1.grid(axis='y', alpha=0.3, linestyle='--')
-    ax1.set_facecolor('#ffffff')
-    
+    ax1.grid(axis="y", alpha=0.3, linestyle="--")
+    ax1.set_facecolor("#ffffff")
+
     # Add value labels on bars
     for bar, pred in zip(bars1, predictions):
         height = bar.get_height()
-        label = 'RISK' if pred == 1 else 'NO RISK'
-        ax1.text(bar.get_x() + bar.get_width()/2., height + 0.05,
-                label, ha='center', va='bottom', fontweight='bold', fontsize=10)
-    
-    plt.setp(ax1.get_xticklabels(), rotation=45, ha='right', fontweight='bold')
-    
+        label = "RISK" if pred == 1 else "NO RISK"
+        ax1.text(
+            bar.get_x() + bar.get_width() / 2.0,
+            height + 0.05,
+            label,
+            ha="center",
+            va="bottom",
+            fontweight="bold",
+            fontsize=10,
+        )
+
+    plt.setp(ax1.get_xticklabels(), rotation=45, ha="right", fontweight="bold")
+
     # Enhanced probability chart with gradient colors
-    disease_probs = [float(probabilities[model]['Heart Disease']) for model in model_names]
-    
+    disease_probs = [
+        float(probabilities[model]["Heart Disease"]) for model in model_names
+    ]
+
     # Create color gradient based on probability
     prob_colors = []
     for prob in disease_probs:
         if prob < 0.3:
-            prob_colors.append('#28a745')  # Green for low risk
+            prob_colors.append("#28a745")  # Green for low risk
         elif prob < 0.7:
-            prob_colors.append('#ffc107')  # Yellow for moderate risk
+            prob_colors.append("#ffc107")  # Yellow for moderate risk
         else:
-            prob_colors.append('#dc3545')  # Red for high risk
-    
-    bars2 = ax2.bar(model_names, disease_probs, color=prob_colors, alpha=0.8, edgecolor='white', linewidth=2)
-    ax2.set_ylabel('Cardiovascular Risk Probability', fontsize=12, fontweight='bold')
-    ax2.set_title('Risk Probability Distribution', fontsize=14, fontweight='bold', pad=20)
+            prob_colors.append("#dc3545")  # Red for high risk
+
+    bars2 = ax2.bar(
+        model_names,
+        disease_probs,
+        color=prob_colors,
+        alpha=0.8,
+        edgecolor="white",
+        linewidth=2,
+    )
+    ax2.set_ylabel("Cardiovascular Risk Probability", fontsize=12, fontweight="bold")
+    ax2.set_title(
+        "Risk Probability Distribution", fontsize=14, fontweight="bold", pad=20
+    )
     ax2.set_ylim(0, 1)
-    ax2.grid(axis='y', alpha=0.3, linestyle='--')
-    ax2.set_facecolor('#ffffff')
-    
+    ax2.grid(axis="y", alpha=0.3, linestyle="--")
+    ax2.set_facecolor("#ffffff")
+
     # Add percentage labels on bars
     for bar, prob in zip(bars2, disease_probs):
         height = bar.get_height()
-        ax2.text(bar.get_x() + bar.get_width()/2., height + 0.02,
-                f'{prob:.1%}', ha='center', va='bottom', fontweight='bold', fontsize=10)
-    
-    plt.setp(ax2.get_xticklabels(), rotation=45, ha='right', fontweight='bold')
-    
+        ax2.text(
+            bar.get_x() + bar.get_width() / 2.0,
+            height + 0.02,
+            f"{prob:.1%}",
+            ha="center",
+            va="bottom",
+            fontweight="bold",
+            fontsize=10,
+        )
+
+    plt.setp(ax2.get_xticklabels(), rotation=45, ha="right", fontweight="bold")
+
     # Add professional styling
     for ax in [ax1, ax2]:
-        ax.spines['top'].set_visible(False)
-        ax.spines['right'].set_visible(False)
-        ax.spines['left'].set_color('#666666')
-        ax.spines['bottom'].set_color('#666666')
-    
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
+        ax.spines["left"].set_color("#666666")
+        ax.spines["bottom"].set_color("#666666")
+
     plt.tight_layout()
-    
+
     # Store patient data for PDF generation
     patient_data = {
-        'name': patient_name,
-        'age': age,
-        'sex': 'Male' if sex == 1 else 'Female',
-        'chest_pain_type': ['Typical Angina', 'Atypical Angina', 'Non-anginal Pain', 'Asymptomatic'][chest_pain_type],
-        'resting_bp': resting_bp,
-        'cholesterol': cholesterol,
-        'fasting_blood_sugar': '> 120 mg/dL' if fasting_blood_sugar == 1 else '≤ 120 mg/dL',
-        'rest_ecg': ['Normal', 'ST-T Wave Abnormality', 'Left Ventricular Hypertrophy'][rest_ecg],
-        'max_heart_rate': max_heart_rate,
-        'exercise_angina': 'Yes' if exercise_angina == 1 else 'No',
-        'st_depression': st_depression,
-        'slope': ['Upsloping', 'Flat', 'Downsloping'][slope],
-        'colored_vessels': colored_vessels,
-        'thalassemia': ['Normal', 'Fixed Defect', 'Reversible Defect', 'Not Described'][thalassemia]
+        "name": patient_name,
+        "age": age,
+        "sex": "Male" if sex == 1 else "Female",
+        "chest_pain_type": [
+            "Typical Angina",
+            "Atypical Angina",
+            "Non-anginal Pain",
+            "Asymptomatic",
+        ][chest_pain_type],
+        "resting_bp": resting_bp,
+        "cholesterol": cholesterol,
+        "fasting_blood_sugar": (
+            "> 120 mg/dL" if fasting_blood_sugar == 1 else "≤ 120 mg/dL"
+        ),
+        "rest_ecg": ["Normal", "ST-T Wave Abnormality", "Left Ventricular Hypertrophy"][
+            rest_ecg
+        ],
+        "max_heart_rate": max_heart_rate,
+        "exercise_angina": "Yes" if exercise_angina == 1 else "No",
+        "st_depression": st_depression,
+        "slope": ["Upsloping", "Flat", "Downsloping"][slope],
+        "colored_vessels": colored_vessels,
+        "thalassemia": ["Normal", "Fixed Defect", "Reversible Defect", "Not Described"][
+            thalassemia
+        ],
     }
-    
+
     # Prepare report data for PDF generation (combine all data into report_data)
     report_data = {
-        'patient_name': patient_name,
-        'age': age,
-        'sex': 'Male' if sex == 1 else 'Female',
-        'chest_pain_type': ['Typical Angina', 'Atypical Angina', 'Non-anginal Pain', 'Asymptomatic'][chest_pain_type],
-        'resting_bp': resting_bp,
-        'cholesterol': cholesterol,
-        'fasting_blood_sugar': '> 120 mg/dL' if fasting_blood_sugar == 1 else '≤ 120 mg/dL',
-        'rest_ecg': ['Normal', 'ST-T Wave Abnormality', 'Left Ventricular Hypertrophy'][rest_ecg],
-        'max_heart_rate': max_heart_rate,
-        'exercise_angina': 'Yes' if exercise_angina == 1 else 'No',
-        'st_depression': st_depression,
-        'slope': ['Upsloping', 'Flat', 'Downsloping'][slope],
-        'colored_vessels': colored_vessels,
-        'thalassemia': ['Normal', 'Fixed Defect', 'Reversible Defect', 'Not Described'][thalassemia],
-        'timestamp': pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S'),
-        'results': results,
-        'probabilities': probabilities,
-        'overall_result': overall_result,
-        'recommendation': recommendation,
-        'positive_predictions': positive_predictions,
-        'confidence_level': confidence_level
+        "patient_name": patient_name,
+        "age": age,
+        "sex": "Male" if sex == 1 else "Female",
+        "chest_pain_type": [
+            "Typical Angina",
+            "Atypical Angina",
+            "Non-anginal Pain",
+            "Asymptomatic",
+        ][chest_pain_type],
+        "resting_bp": resting_bp,
+        "cholesterol": cholesterol,
+        "fasting_blood_sugar": (
+            "> 120 mg/dL" if fasting_blood_sugar == 1 else "≤ 120 mg/dL"
+        ),
+        "rest_ecg": ["Normal", "ST-T Wave Abnormality", "Left Ventricular Hypertrophy"][
+            rest_ecg
+        ],
+        "max_heart_rate": max_heart_rate,
+        "exercise_angina": "Yes" if exercise_angina == 1 else "No",
+        "st_depression": st_depression,
+        "slope": ["Upsloping", "Flat", "Downsloping"][slope],
+        "colored_vessels": colored_vessels,
+        "thalassemia": ["Normal", "Fixed Defect", "Reversible Defect", "Not Described"][
+            thalassemia
+        ],
+        "timestamp": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "results": results,
+        "probabilities": probabilities,
+        "overall_result": overall_result,
+        "recommendation": recommendation,
+        "positive_predictions": positive_predictions,
+        "confidence_level": confidence_level,
     }
-    
+
     # Prepare input data for clinical parameters section
-    input_data_for_pdf = pd.DataFrame({
-        'age': [age],
-        'sex': [sex],
-        'cp': [chest_pain_type],
-        'trestbps': [resting_bp],
-        'chol': [cholesterol],
-        'fbs': [fasting_blood_sugar],
-        'restecg': [rest_ecg],
-        'thalach': [max_heart_rate],
-        'exang': [exercise_angina],
-        'oldpeak': [st_depression],
-        'slope': [slope],
-        'ca': [colored_vessels],
-        'thal': [thalassemia]
-    })
-    
+    input_data_for_pdf = pd.DataFrame(
+        {
+            "age": [age],
+            "sex": [sex],
+            "cp": [chest_pain_type],
+            "trestbps": [resting_bp],
+            "chol": [cholesterol],
+            "fbs": [fasting_blood_sugar],
+            "restecg": [rest_ecg],
+            "thalach": [max_heart_rate],
+            "exang": [exercise_angina],
+            "oldpeak": [st_depression],
+            "slope": [slope],
+            "ca": [colored_vessels],
+            "thal": [thalassemia],
+        }
+    )
+
     # Generate PDF report
     pdf_path = generate_pdf_report(report_data, input_data_for_pdf)
-    
+
     # Log prediction to WandB if available
     if WANDB_AVAILABLE:
         try:
             # Prepare patient data for WandB logging (anonymized)
             patient_data_for_wandb = {
-                'age': age,
-                'sex': 'Male' if sex == 1 else 'Female',
-                'chest_pain_type': ['Typical Angina', 'Atypical Angina', 'Non-anginal Pain', 'Asymptomatic'][chest_pain_type],
-                'resting_bp': resting_bp,
-                'cholesterol': cholesterol,
-                'fasting_blood_sugar': '> 120 mg/dL' if fasting_blood_sugar == 1 else '≤ 120 mg/dL',
-                'rest_ecg': ['Normal', 'ST-T Wave Abnormality', 'Left Ventricular Hypertrophy'][rest_ecg],
-                'max_heart_rate': max_heart_rate,
-                'exercise_angina': 'Yes' if exercise_angina == 1 else 'No',
-                'st_depression': st_depression,
-                'slope': ['Upsloping', 'Flat', 'Downsloping'][slope],
-                'colored_vessels': colored_vessels,
-                'thalassemia': ['Normal', 'Fixed Defect', 'Reversible Defect', 'Not Described'][thalassemia]
+                "age": age,
+                "sex": "Male" if sex == 1 else "Female",
+                "chest_pain_type": [
+                    "Typical Angina",
+                    "Atypical Angina",
+                    "Non-anginal Pain",
+                    "Asymptomatic",
+                ][chest_pain_type],
+                "resting_bp": resting_bp,
+                "cholesterol": cholesterol,
+                "fasting_blood_sugar": (
+                    "> 120 mg/dL" if fasting_blood_sugar == 1 else "≤ 120 mg/dL"
+                ),
+                "rest_ecg": [
+                    "Normal",
+                    "ST-T Wave Abnormality",
+                    "Left Ventricular Hypertrophy",
+                ][rest_ecg],
+                "max_heart_rate": max_heart_rate,
+                "exercise_angina": "Yes" if exercise_angina == 1 else "No",
+                "st_depression": st_depression,
+                "slope": ["Upsloping", "Flat", "Downsloping"][slope],
+                "colored_vessels": colored_vessels,
+                "thalassemia": [
+                    "Normal",
+                    "Fixed Defect",
+                    "Reversible Defect",
+                    "Not Described",
+                ][thalassemia],
             }
-            
-            log_prediction_data(patient_data_for_wandb, results, probabilities, overall_result, confidence_level)
+
+            log_prediction_data(
+                patient_data_for_wandb,
+                results,
+                probabilities,
+                overall_result,
+                confidence_level,
+            )
             print("📊 WandB tracking: Prediction logged successfully")
         except Exception as e:
             print(f"⚠️ WandB logging error: {e}")
-    
+
     # Save prediction to database if available
     if DATABASE_AVAILABLE and is_database_connected():
         try:
             # Prepare patient data for database
             patient_data_for_db = {
-                'patient_name': patient_name,
-                'age': age,
-                'sex': 'Male' if sex == 1 else 'Female',
-                'chest_pain_type': ['Typical Angina', 'Atypical Angina', 'Non-anginal Pain', 'Asymptomatic'][chest_pain_type],
-                'resting_bp': resting_bp,
-                'cholesterol': cholesterol,
-                'fasting_blood_sugar': '> 120 mg/dL' if fasting_blood_sugar == 1 else '≤ 120 mg/dL',
-                'rest_ecg': ['Normal', 'ST-T Wave Abnormality', 'Left Ventricular Hypertrophy'][rest_ecg],
-                'max_heart_rate': max_heart_rate,
-                'exercise_angina': 'Yes' if exercise_angina == 1 else 'No',
-                'st_depression': st_depression,
-                'slope': ['Upsloping', 'Flat', 'Downsloping'][slope],
-                'colored_vessels': colored_vessels,
-                'thalassemia': ['Normal', 'Fixed Defect', 'Reversible Defect', 'Not Described'][thalassemia]
+                "patient_name": patient_name,
+                "age": age,
+                "sex": "Male" if sex == 1 else "Female",
+                "chest_pain_type": [
+                    "Typical Angina",
+                    "Atypical Angina",
+                    "Non-anginal Pain",
+                    "Asymptomatic",
+                ][chest_pain_type],
+                "resting_bp": resting_bp,
+                "cholesterol": cholesterol,
+                "fasting_blood_sugar": (
+                    "> 120 mg/dL" if fasting_blood_sugar == 1 else "≤ 120 mg/dL"
+                ),
+                "rest_ecg": [
+                    "Normal",
+                    "ST-T Wave Abnormality",
+                    "Left Ventricular Hypertrophy",
+                ][rest_ecg],
+                "max_heart_rate": max_heart_rate,
+                "exercise_angina": "Yes" if exercise_angina == 1 else "No",
+                "st_depression": st_depression,
+                "slope": ["Upsloping", "Flat", "Downsloping"][slope],
+                "colored_vessels": colored_vessels,
+                "thalassemia": [
+                    "Normal",
+                    "Fixed Defect",
+                    "Reversible Defect",
+                    "Not Described",
+                ][thalassemia],
             }
-            
+
             # Prepare prediction results for database
             prediction_results_for_db = {
-                'positive_predictions': positive_predictions,
-                'confidence_level': confidence_level,
-                'overall_result': overall_result,
-                'recommendation': recommendation,
-                'results': results,
-                'probabilities': probabilities
+                "positive_predictions": positive_predictions,
+                "confidence_level": confidence_level,
+                "overall_result": overall_result,
+                "recommendation": recommendation,
+                "results": results,
+                "probabilities": probabilities,
             }
-            
+
             # Save to database
-            save_result = save_prediction_to_db(patient_data_for_db, prediction_results_for_db, {})
+            save_result = save_prediction_to_db(
+                patient_data_for_db, prediction_results_for_db, {}
+            )
             if save_result:
                 print("🗄️ Database: Prediction saved successfully")
             else:
                 print("⚠️ Database: Failed to save prediction")
-                
+
         except Exception as e:
             print(f"⚠️ Database error: {e}")
-    
+
     return detailed_results, fig, pdf_path
+
 
 # Define the Gradio interface
 def create_interface():
@@ -834,15 +1228,16 @@ def create_interface():
         border: 1px solid #e9ecef;
     }
     """
-    
+
     with gr.Blocks(
-        title="CardioPredict Pro - AI-Powered Heart Disease Assessment", 
+        title="CardioPredict Pro - AI-Powered Heart Disease Assessment",
         theme=gr.themes.Base(),
-        css=custom_css
+        css=custom_css,
     ) as demo:
-        
+
         # Main Header
-        gr.HTML("""
+        gr.HTML(
+            """
         <div class="main-header">
             <h1 style="margin: 0; font-size: 2.5em; font-weight: 300;">
                 🏥 CardioPredict Pro
@@ -851,10 +1246,12 @@ def create_interface():
                 Advanced AI-Powered Cardiovascular Risk Assessment
             </p>
         </div>
-        """)
-        
+        """
+        )
+
         # Professional disclaimer
-        gr.HTML("""
+        gr.HTML(
+            """
         <div class="warning-box">
             <h4 style="margin: 0 0 0.5rem 0; color: #856404;">
                 ⚠️ Medical Disclaimer
@@ -864,227 +1261,276 @@ def create_interface():
                 medical diagnosis or treatment decisions. Always consult qualified healthcare professionals for medical advice.
             </p>
         </div>
-        """)
-        
+        """
+        )
+
         # Input Form Section
-        gr.HTML('<div class="section-header"><h3 style="margin: 0; color: #495057;">📋 Patient Assessment Form</h3></div>')
-        
+        gr.HTML(
+            '<div class="section-header"><h3 style="margin: 0; color: #495057;">📋 Patient Assessment Form</h3></div>'
+        )
+
         with gr.Row():
             with gr.Column(scale=1):
-                gr.HTML('<h4 style="color: #6c757d; border-bottom: 2px solid #e9ecef; padding-bottom: 0.5rem;">👤 Patient Information</h4>')
-                
+                gr.HTML(
+                    '<h4 style="color: #6c757d; border-bottom: 2px solid #e9ecef; padding-bottom: 0.5rem;">👤 Patient Information</h4>'
+                )
+
                 patient_name = gr.Textbox(
                     label="Patient Name",
                     placeholder="Enter patient's full name",
                     info="Patient's name for medical records",
-                    value="John Doe"
+                    value="John Doe",
                 )
-                
-                gr.HTML('<h4 style="color: #6c757d; border-bottom: 2px solid #e9ecef; padding-bottom: 0.5rem; margin-top: 1.5rem;">👤 Demographics</h4>')
-                
+
+                gr.HTML(
+                    '<h4 style="color: #6c757d; border-bottom: 2px solid #e9ecef; padding-bottom: 0.5rem; margin-top: 1.5rem;">👤 Demographics</h4>'
+                )
+
                 age = gr.Slider(
-                    minimum=1, maximum=100, value=50, 
+                    minimum=1,
+                    maximum=100,
+                    value=50,
                     label="Age (years)",
-                    info="Patient's age in years"
+                    info="Patient's age in years",
                 )
-                
+
                 sex = gr.Dropdown(
-                    choices=[("Female", 0), ("Male", 1)], 
-                    value=1, 
+                    choices=[("Female", 0), ("Male", 1)],
+                    value=1,
                     label="Biological Sex",
-                    info="Select biological sex"
+                    info="Select biological sex",
                 )
-                
-                gr.HTML('<h4 style="color: #6c757d; border-bottom: 2px solid #e9ecef; padding-bottom: 0.5rem; margin-top: 1.5rem;">💓 Cardiac Symptoms</h4>')
-                
+
+                gr.HTML(
+                    '<h4 style="color: #6c757d; border-bottom: 2px solid #e9ecef; padding-bottom: 0.5rem; margin-top: 1.5rem;">💓 Cardiac Symptoms</h4>'
+                )
+
                 chest_pain_type = gr.Dropdown(
                     choices=[
-                        ("Typical Angina", 0), 
-                        ("Atypical Angina", 1), 
-                        ("Non-anginal Pain", 2), 
-                        ("Asymptomatic", 3)
-                    ], 
+                        ("Typical Angina", 0),
+                        ("Atypical Angina", 1),
+                        ("Non-anginal Pain", 2),
+                        ("Asymptomatic", 3),
+                    ],
                     value=0,
                     label="Chest Pain Type",
-                    info="Classification of chest pain symptoms"
+                    info="Classification of chest pain symptoms",
                 )
-                
+
                 exercise_angina = gr.Dropdown(
-                    choices=[("No", 0), ("Yes", 1)], 
-                    value=0, 
+                    choices=[("No", 0), ("Yes", 1)],
+                    value=0,
                     label="Exercise Induced Angina",
-                    info="Does exercise trigger chest pain?"
+                    info="Does exercise trigger chest pain?",
                 )
-                
-                gr.HTML('<h4 style="color: #6c757d; border-bottom: 2px solid #e9ecef; padding-bottom: 0.5rem; margin-top: 1.5rem;">🩺 Vital Signs</h4>')
-                
+
+                gr.HTML(
+                    '<h4 style="color: #6c757d; border-bottom: 2px solid #e9ecef; padding-bottom: 0.5rem; margin-top: 1.5rem;">🩺 Vital Signs</h4>'
+                )
+
                 resting_bp = gr.Slider(
-                    minimum=80, maximum=250, value=120, 
+                    minimum=80,
+                    maximum=250,
+                    value=120,
                     label="Resting Blood Pressure (mmHg)",
-                    info="Systolic blood pressure at rest"
+                    info="Systolic blood pressure at rest",
                 )
-                
+
                 max_heart_rate = gr.Slider(
-                    minimum=50, maximum=250, value=150, 
+                    minimum=50,
+                    maximum=250,
+                    value=150,
                     label="Maximum Heart Rate (bpm)",
-                    info="Maximum heart rate achieved during stress test"
+                    info="Maximum heart rate achieved during stress test",
                 )
-                
+
             with gr.Column(scale=1):
-                gr.HTML('<h4 style="color: #6c757d; border-bottom: 2px solid #e9ecef; padding-bottom: 0.5rem;">🔬 Laboratory Results</h4>')
-                
+                gr.HTML(
+                    '<h4 style="color: #6c757d; border-bottom: 2px solid #e9ecef; padding-bottom: 0.5rem;">🔬 Laboratory Results</h4>'
+                )
+
                 cholesterol = gr.Slider(
-                    minimum=100, maximum=600, value=200, 
+                    minimum=100,
+                    maximum=600,
+                    value=200,
                     label="Serum Cholesterol (mg/dL)",
-                    info="Total cholesterol level"
+                    info="Total cholesterol level",
                 )
-                
+
                 fasting_blood_sugar = gr.Dropdown(
-                    choices=[("≤ 120 mg/dL", 0), ("> 120 mg/dL", 1)], 
-                    value=0, 
+                    choices=[("≤ 120 mg/dL", 0), ("> 120 mg/dL", 1)],
+                    value=0,
                     label="Fasting Blood Sugar",
-                    info="Fasting blood glucose level"
+                    info="Fasting blood glucose level",
                 )
-                
+
                 rest_ecg = gr.Dropdown(
                     choices=[
-                        ("Normal", 0), 
-                        ("ST-T Wave Abnormality", 1), 
-                        ("Left Ventricular Hypertrophy", 2)
-                    ], 
+                        ("Normal", 0),
+                        ("ST-T Wave Abnormality", 1),
+                        ("Left Ventricular Hypertrophy", 2),
+                    ],
                     value=0,
                     label="Resting ECG Results",
-                    info="Electrocardiogram findings at rest"
+                    info="Electrocardiogram findings at rest",
                 )
-                
-                gr.HTML('<h4 style="color: #6c757d; border-bottom: 2px solid #e9ecef; padding-bottom: 0.5rem; margin-top: 1.5rem;">📊 Stress Test Parameters</h4>')
-                
+
+                gr.HTML(
+                    '<h4 style="color: #6c757d; border-bottom: 2px solid #e9ecef; padding-bottom: 0.5rem; margin-top: 1.5rem;">📊 Stress Test Parameters</h4>'
+                )
+
                 st_depression = gr.Slider(
-                    minimum=0.0, maximum=10.0, value=0.0, step=0.1, 
+                    minimum=0.0,
+                    maximum=10.0,
+                    value=0.0,
+                    step=0.1,
                     label="ST Depression (mm)",
-                    info="ST depression induced by exercise relative to rest"
+                    info="ST depression induced by exercise relative to rest",
                 )
-                
+
                 slope = gr.Dropdown(
-                    choices=[
-                        ("Upsloping", 0), 
-                        ("Flat", 1), 
-                        ("Downsloping", 2)
-                    ], 
-                    value=1, 
+                    choices=[("Upsloping", 0), ("Flat", 1), ("Downsloping", 2)],
+                    value=1,
                     label="ST Segment Slope",
-                    info="Slope of peak exercise ST segment"
+                    info="Slope of peak exercise ST segment",
                 )
-                
-                gr.HTML('<h4 style="color: #6c757d; border-bottom: 2px solid #e9ecef; padding-bottom: 0.5rem; margin-top: 1.5rem;">🩻 Advanced Diagnostics</h4>')
-                
+
+                gr.HTML(
+                    '<h4 style="color: #6c757d; border-bottom: 2px solid #e9ecef; padding-bottom: 0.5rem; margin-top: 1.5rem;">🩻 Advanced Diagnostics</h4>'
+                )
+
                 colored_vessels = gr.Dropdown(
-                    choices=[("0", 0), ("1", 1), ("2", 2), ("3", 3)], 
-                    value=0, 
+                    choices=[("0", 0), ("1", 1), ("2", 2), ("3", 3)],
+                    value=0,
                     label="Vessels Colored by Fluoroscopy",
-                    info="Number of major vessels with significant stenosis"
+                    info="Number of major vessels with significant stenosis",
                 )
-                
+
                 thalassemia = gr.Dropdown(
                     choices=[
-                        ("Normal", 0), 
-                        ("Fixed Defect", 1), 
-                        ("Reversible Defect", 2), 
-                        ("Not Described", 3)
-                    ], 
-                    value=2, 
+                        ("Normal", 0),
+                        ("Fixed Defect", 1),
+                        ("Reversible Defect", 2),
+                        ("Not Described", 3),
+                    ],
+                    value=2,
                     label="Thalassemia Test Result",
-                    info="Thalassemia stress test result"
+                    info="Thalassemia stress test result",
                 )
-        
+
         # Prediction Button Section
         gr.HTML('<div style="text-align: center; margin: 2rem 0;">')
-        
+
         predict_btn = gr.Button(
-            "🔍 Analyze Cardiovascular Risk", 
-            variant="primary", 
+            "🔍 Analyze Cardiovascular Risk",
+            variant="primary",
             size="lg",
-            elem_classes=["predict-button"]
+            elem_classes=["predict-button"],
         )
-        
-        gr.HTML('</div>')
-        
+
+        gr.HTML("</div>")
+
         # Results Section
-        gr.HTML('<div class="section-header"><h3 style="margin: 0; color: #495057;">📊 AI Analysis Results</h3></div>')
-        
-        gr.HTML("""<div class="info-box">
+        gr.HTML(
+            '<div class="section-header"><h3 style="margin: 0; color: #495057;">📊 AI Analysis Results</h3></div>'
+        )
+
+        gr.HTML(
+            """<div class="info-box">
             <p style="margin: 0; color: #0c5460;">
                 <strong>🤖 Multi-Model Analysis:</strong> Our system employs four advanced machine learning algorithms 
                 (Logistic Regression, Random Forest, SVM, and Gradient Boosting) to provide a comprehensive 
                 cardiovascular risk assessment. Results are aggregated for maximum reliability.
             </p>
-        </div>""")
-        
+        </div>"""
+        )
+
         with gr.Row():
             with gr.Column(scale=2):
                 gr.HTML('<div class="results-container">')
                 results_text = gr.Markdown(visible=True)
-                gr.HTML('</div>')
+                gr.HTML("</div>")
             with gr.Column(scale=2):
                 gr.HTML('<div class="results-container">')
                 results_plot = gr.Plot(visible=True)
-                gr.HTML('</div>')
-        
+                gr.HTML("</div>")
+
         # PDF Download Section
-        gr.HTML('<div class="section-header"><h3 style="margin: 0; color: #495057;">📄 Medical Report Download</h3></div>')
-        
+        gr.HTML(
+            '<div class="section-header"><h3 style="margin: 0; color: #495057;">📄 Medical Report Download</h3></div>'
+        )
+
         with gr.Row():
             with gr.Column():
                 pdf_download = gr.File(
                     label="📋 Professional Medical Report (PDF)",
                     interactive=False,
-                    visible=True
+                    visible=True,
                 )
-                
-                gr.HTML("""<div class="info-box" style="margin-top: 1rem;">
+
+                gr.HTML(
+                    """<div class="info-box" style="margin-top: 1rem;">
                     <p style="margin: 0; color: #0c5460;">
                         <strong>📄 Professional Report:</strong> Complete cardiovascular assessment report 
                         including patient demographics, clinical parameters, AI analysis results, and 
                         medical recommendations formatted for healthcare professionals.
                     </p>
-                </div>""")
-        
+                </div>"""
+                )
+
         # Connect the prediction function
         predict_btn.click(
             predict_heart_disease,
-            inputs=[patient_name, age, sex, chest_pain_type, resting_bp, cholesterol, 
-                   fasting_blood_sugar, rest_ecg, max_heart_rate, 
-                   exercise_angina, st_depression, slope, 
-                   colored_vessels, thalassemia],
-            outputs=[results_text, results_plot, pdf_download]
+            inputs=[
+                patient_name,
+                age,
+                sex,
+                chest_pain_type,
+                resting_bp,
+                cholesterol,
+                fasting_blood_sugar,
+                rest_ecg,
+                max_heart_rate,
+                exercise_angina,
+                st_depression,
+                slope,
+                colored_vessels,
+                thalassemia,
+            ],
+            outputs=[results_text, results_plot, pdf_download],
         )
-        
+
         # Professional Information Section
         gr.Markdown("## 🔬 Technical Information")
-        
+
         with gr.Row():
             with gr.Column():
-                gr.Markdown("""
+                gr.Markdown(
+                    """
 ### 🧠 Machine Learning Models
 
 - **Logistic Regression:** Linear probabilistic model optimized for medical interpretability
 - **Random Forest:** Ensemble method using 100+ decision trees for robust predictions  
 - **Support Vector Machine:** Non-linear classifier with RBF kernel and probability calibration
 - **Gradient Boosting:** Sequential learning algorithm with advanced regularization
-                """)
-            
+                """
+                )
+
             with gr.Column():
-                gr.Markdown("""
+                gr.Markdown(
+                    """
 ### 📈 Risk Assessment Methodology
 
 - **High Risk:** 3+ models indicate positive prediction
 - **Moderate Risk:** 2 models indicate positive prediction
 - **Low Risk:** 0-1 models indicate positive prediction
 - **Confidence:** Based on model consensus and probability scores
-                """)
-        
+                """
+                )
+
         # Professional Footer
-        gr.Markdown("""
+        gr.Markdown(
+            """
 ---
 ## ⚠️ Important Medical Disclaimer
 
@@ -1094,9 +1540,11 @@ in training data and may not account for individual medical history, comorbiditi
 **Always consult qualified healthcare professionals for medical evaluation and treatment decisions.**
 
 *CardioPredict Pro v1.0 | Powered by Advanced Machine Learning | For Research Use Only*
-        """)
-    
+        """
+        )
+
     return demo
+
 
 if __name__ == "__main__":
     print("CardioPredict Pro - Loading models...")
