@@ -34,16 +34,18 @@ from io import BytesIO
 warnings.filterwarnings("ignore")
 
 
-# Load environment variables
+# Environment loading function
 def load_env_vars():
     """Load environment variables from .env file"""
-    env_path = os.path.join(os.path.dirname(__file__), ".env")
-    if os.path.exists(env_path):
-        with open(env_path, "r") as f:
+    env_file = ".env"
+    if os.path.exists(env_file):
+        with open(env_file, "r") as f:
             for line in f:
-                if "=" in line and not line.startswith("#"):
+                if "=" in line and not line.strip().startswith("#"):
                     key, value = line.strip().split("=", 1)
                     os.environ[key] = value
+    else:
+        print("ℹ️ .env file not found - using system environment variables")
 
 
 # Load environment variables
@@ -67,19 +69,19 @@ except ImportError:
 
     # Define dummy functions
     def init_wandb_tracking(*args, **kwargs):
-        return False
+        return None
 
     def log_training_data(*args, **kwargs):
-        pass
+        return None
 
     def log_prediction_data(*args, **kwargs):
-        pass
+        return None
 
     def create_wandb_dashboard(*args, **kwargs):
-        pass
+        return None
 
     def finish_wandb_run(*args, **kwargs):
-        pass
+        return None
 
 
 # Optional Database integration - gracefully handles missing credentials
@@ -125,21 +127,11 @@ def load_and_prepare_models():
     """Load the dataset and train all models using combined real data"""
     print("Loading cardiovascular disease prediction models...")
 
-    # Initialize optional WandB tracking
-    wandb_initialized = False
-    if WANDB_AVAILABLE:
-        try:
-            wandb_initialized = init_wandb_tracking()
-            if wandb_initialized:
-                print("📊 WandB tracking initialized successfully")
-        except Exception as e:
-            print(f"⚠️ WandB tracking failed to initialize: {e}")
-
     # Try to load pre-trained models first
     try:
-        with open("../cardio_models_combined.pkl", "rb") as f:
+        with open("cardio_models_combined.pkl", "rb") as f:
             model_package = pickle.load(f)
-        print("✅ Pre-trained models loaded from '../cardio_models_combined.pkl'")
+        print("✅ Pre-trained models loaded from 'cardio_models_combined.pkl'")
         print(
             f"📊 Training info: {model_package['training_data_info']['total_samples']} total samples"
         )
@@ -151,11 +143,12 @@ def load_and_prepare_models():
         print("🔄 Training new models...")
 
     try:
-        # Try to load datasets from parent directory
-        df1 = pd.read_csv("../Cardio_vascular.csv")
+        # Load the first dataset (existing)
+        df1 = pd.read_csv("Cardio_vascular.csv")
         print(f"✅ Cardio_vascular.csv loaded: {df1.shape}")
 
-        df2 = pd.read_csv("../heart_statlog_cleveland_hungary_final.csv")
+        # Load the second dataset (heart statlog)
+        df2 = pd.read_csv("heart_statlog_cleveland_hungary_final.csv")
         print(f"✅ heart_statlog_cleveland_hungary_final.csv loaded: {df2.shape}")
 
         # Rename columns in df2 to match df1 structure
@@ -176,6 +169,7 @@ def load_and_prepare_models():
         ]
 
         # Add missing features to df2 with default values
+        # Heart statlog dataset is missing 'ca' and 'thal' features
         df2_renamed["ca"] = 0  # Default value for number of major vessels
         df2_renamed["thal"] = 2  # Default value for thalassemia (2 = normal)
 
@@ -271,7 +265,9 @@ def load_and_prepare_models():
 
     # Save models for future use
     try:
-        with open("cardiopredict_pro_models.pkl", "wb") as f:
+        import pickle
+
+        with open("trained_models.pkl", "wb") as f:
             pickle.dump(
                 {
                     "models": models,
@@ -280,39 +276,11 @@ def load_and_prepare_models():
                 },
                 f,
             )
-        print("✅ Models saved to 'cardiopredict_pro_models.pkl'")
+        print("✅ Models saved to 'trained_models.pkl'")
     except Exception as e:
         print(f"⚠️ Could not save models: {e}")
 
-    # Log model training to wandb
-    try:
-        if wandb.run is not None:
-            wandb.log(
-                {
-                    "training/dataset_size": len(df),
-                    "training/features": len(X.columns),
-                    "training/models_trained": len(models),
-                    "training/test_split": 0.2,
-                }
-            )
-            # Log basic model info
-            for model_name in models.keys():
-                wandb.log(
-                    {f"models/{model_name.lower().replace(' ', '_')}_trained": True}
-                )
-    except Exception as e:
-        print(f"WandB model logging failed: {e}")
-
     print("Models loaded successfully!")
-
-    # Log training data to WandB if available
-    if WANDB_AVAILABLE and wandb_initialized:
-        try:
-            log_training_data(models, df)
-            print("📈 Training data logged to WandB")
-        except Exception as e:
-            print(f"⚠️ WandB training logging failed: {e}")
-
     return models, X.columns.tolist()
 
 
@@ -1011,6 +979,35 @@ def predict_heart_disease(
 
     plt.tight_layout()
 
+    # Store patient data for PDF generation
+    patient_data = {
+        "name": patient_name,
+        "age": age,
+        "sex": "Male" if sex == 1 else "Female",
+        "chest_pain_type": [
+            "Typical Angina",
+            "Atypical Angina",
+            "Non-anginal Pain",
+            "Asymptomatic",
+        ][chest_pain_type],
+        "resting_bp": resting_bp,
+        "cholesterol": cholesterol,
+        "fasting_blood_sugar": (
+            "> 120 mg/dL" if fasting_blood_sugar == 1 else "≤ 120 mg/dL"
+        ),
+        "rest_ecg": ["Normal", "ST-T Wave Abnormality", "Left Ventricular Hypertrophy"][
+            rest_ecg
+        ],
+        "max_heart_rate": max_heart_rate,
+        "exercise_angina": "Yes" if exercise_angina == 1 else "No",
+        "st_depression": st_depression,
+        "slope": ["Upsloping", "Flat", "Downsloping"][slope],
+        "colored_vessels": colored_vessels,
+        "thalassemia": ["Normal", "Fixed Defect", "Reversible Defect", "Not Described"][
+            thalassemia
+        ],
+    }
+
     # Prepare report data for PDF generation (combine all data into report_data)
     report_data = {
         "patient_name": patient_name,
@@ -1084,17 +1081,37 @@ def predict_heart_disease(
                 ][chest_pain_type],
                 "resting_bp": resting_bp,
                 "cholesterol": cholesterol,
-                "exercise_angina": "Yes" if exercise_angina == 1 else "No",
                 "fasting_blood_sugar": (
-                    "> 120 mg/dL" if fasting_blood_sugar == 1 else "No"
+                    "> 120 mg/dL" if fasting_blood_sugar == 1 else "≤ 120 mg/dL"
                 ),
+                "rest_ecg": [
+                    "Normal",
+                    "ST-T Wave Abnormality",
+                    "Left Ventricular Hypertrophy",
+                ][rest_ecg],
                 "max_heart_rate": max_heart_rate,
+                "exercise_angina": "Yes" if exercise_angina == 1 else "No",
+                "st_depression": st_depression,
+                "slope": ["Upsloping", "Flat", "Downsloping"][slope],
+                "colored_vessels": colored_vessels,
+                "thalassemia": [
+                    "Normal",
+                    "Fixed Defect",
+                    "Reversible Defect",
+                    "Not Described",
+                ][thalassemia],
             }
 
-            log_prediction_data(patient_data_for_wandb, report_data)
-            create_wandb_dashboard()
+            log_prediction_data(
+                patient_data_for_wandb,
+                results,
+                probabilities,
+                overall_result,
+                confidence_level,
+            )
+            print("📊 WandB tracking: Prediction logged successfully")
         except Exception as e:
-            print(f"⚠️ WandB prediction logging failed: {e}")
+            print(f"⚠️ WandB logging error: {e}")
 
     # Save prediction to database if available
     if DATABASE_AVAILABLE and is_database_connected():
@@ -1133,13 +1150,27 @@ def predict_heart_disease(
                 ][thalassemia],
             }
 
-            session_id = save_prediction_to_db(patient_data_for_db, report_data)
-            if session_id:
-                print(f"✅ Prediction saved to database: {session_id}")
+            # Prepare prediction results for database
+            prediction_results_for_db = {
+                "positive_predictions": positive_predictions,
+                "confidence_level": confidence_level,
+                "overall_result": overall_result,
+                "recommendation": recommendation,
+                "results": results,
+                "probabilities": probabilities,
+            }
+
+            # Save to database
+            save_result = save_prediction_to_db(
+                patient_data_for_db, prediction_results_for_db, {}
+            )
+            if save_result:
+                print("🗄️ Database: Prediction saved successfully")
             else:
-                print("⚠️ Database save failed")
+                print("⚠️ Database: Failed to save prediction")
+
         except Exception as e:
-            print(f"⚠️ Database save error: {e}")
+            print(f"⚠️ Database error: {e}")
 
     return detailed_results, fig, pdf_path
 
@@ -1248,10 +1279,7 @@ def create_interface():
                     label="Patient Name",
                     placeholder="Enter patient's full name",
                     info="Patient's name for medical records",
-                    value="",
-                    elem_id="patient_name_input",
-                    interactive=True,
-                    type="text",
+                    value="John Doe",
                 )
 
                 gr.HTML(
@@ -1475,55 +1503,6 @@ def create_interface():
         # Professional Information Section
         gr.Markdown("## 🔬 Technical Information")
 
-        # Add optional WandB tracking info
-        if WANDB_AVAILABLE:
-            gr.HTML(
-                """<div class="info-box">
-                <p style="margin: 0; color: #0c5460;">
-                    <strong>📊 Analytics Tracking:</strong> This system includes optional Weights & Biases (WandB) 
-                    integration for experiment tracking and analytics. When available, predictions and model 
-                    performance are logged for continuous improvement and analysis.
-                </p>
-            </div>"""
-            )
-
-        # Add database integration info
-        if DATABASE_AVAILABLE:
-            # Get database statistics if connected
-            db_stats = get_database_analytics()
-
-            if db_stats and db_stats.get("total_predictions", 0) > 0:
-                gr.HTML(
-                    f"""<div class="info-box">
-                    <p style="margin: 0; color: #0c5460;">
-                        <strong>🗄️ Database Analytics:</strong> Connected to Supabase database. 
-                        <strong>Total Predictions:</strong> {db_stats.get('total_predictions', 0)} | 
-                        <strong>High Risk Cases:</strong> {db_stats.get('high_risk_predictions', 0)} 
-                        ({db_stats.get('risk_percentage', 0):.1f}%) | 
-                        <strong>Average Patient Age:</strong> {db_stats.get('average_patient_age', 0)} years
-                    </p>
-                </div>"""
-                )
-            else:
-                gr.HTML(
-                    """<div class="info-box">
-                    <p style="margin: 0; color: #0c5460;">
-                        <strong>🗄️ Database Integration:</strong> This system includes Supabase database integration 
-                        for permanent record storage. When configured with credentials, all predictions are saved 
-                        for analytics and historical tracking.
-                    </p>
-                </div>"""
-                )
-        else:
-            gr.HTML(
-                """<div class="warning-box">
-                <p style="margin: 0; color: #856404;">
-                    <strong>⚠️ Database Not Available:</strong> Database integration is not enabled. 
-                    Predictions will not be saved permanently. See SUPABASE_SETUP.md for configuration instructions.
-                </p>
-            </div>"""
-            )
-
         with gr.Row():
             with gr.Column():
                 gr.Markdown(
@@ -1571,23 +1550,11 @@ if __name__ == "__main__":
     print("CardioPredict Pro - Loading models...")
     demo = create_interface()
     print("System ready - launching interface...")
-
-    try:
-        demo.launch(
-            share=False,  # Hugging Face handles sharing
-            inbrowser=False,  # Not needed on HF Spaces
-            server_name="0.0.0.0",  # Required for HF Spaces
-            server_port=7860,  # HF Spaces default port
-            show_error=True,  # Show detailed errors
-            quiet=False,  # Show startup logs
-        )
-    except KeyboardInterrupt:
-        print("🛑 Shutting down gracefully...")
-    finally:
-        # Clean up WandB session if available
-        if WANDB_AVAILABLE:
-            try:
-                finish_wandb_run()
-                print("📊 WandB session finished")
-            except Exception as e:
-                print(f"⚠️ WandB cleanup warning: {e}")
+    demo.launch(
+        share=False,  # Hugging Face handles sharing
+        inbrowser=False,  # Not needed on HF Spaces
+        server_name="0.0.0.0",  # Required for HF Spaces
+        server_port=7860,  # HF Spaces default port
+        show_error=True,  # Show detailed errors
+        quiet=False,  # Show startup logs
+    )
